@@ -39,10 +39,12 @@ rlaplace =
     return(laplace_vec)
   }
 
-rlaplace(10000) %>% 
-  as_tibble() %>% 
-  ggplot(aes(x = value)) +
-  geom_density(adjust = 2)
+set.seed(123123)
+x = rlaplace(1000) %>%
+  hist(., probability = T)
+y = seq(-10, 10, 0.01)
+lines(y, 0.5 * exp(-abs(y)))
+
 
 ```
 $\blacksquare$
@@ -74,25 +76,71 @@ rpareto =
   }
 
 set.seed(123123)
-a = 2
-rpareto(10000,a,2) %>%
-  as_tibble() %>%
-  ggplot(aes(x = value)) +
-  geom_density(adjust = 2) +
-  geom_vline(aes(xintercept = a))
+a = runif(1,0,10)
+g = runif(1,0,10)
+x = rpareto(1000,a,g) %>%
+  hist(., probability = T)
+y = seq(2, 50, 0.01)
+lines(y, g*a^g/y^(g+1)*(y>a))
 ```
 
 #Problem 3
 
-Construct an algorithm for using the acceptance/rejection method to generate 100 pseudorandom
+Construct an algorithm for using the acceptance/rejection method to generate 100 pseudo random
  variable from the pdf
  $$f(x) = \frac{2}{\pi \beta^2} \sqrt{\beta^2-x^2}, \,\, -\beta \le x \le \beta.$$
 The simplest choice for $g(x)$ is the $U(-\beta, \beta)$ distribution but other choices are possible as well. Use visualization tools to validate your algorithm (i.e., illustrate whether the random numbers generated from your function truely follows the target distribution.)
 
 # Answer:  your answer starts here...
-```{r }
-#Your R codes/functions 
+
+Let $g(x) \sim U(-\beta,\beta)$
+\begin{eqnarray*}
+M &=& sup\frac{f(x)}{g(x)}\\
+&=& \frac{\frac{2}{\pi \beta^2} \sqrt{\beta^2-x^2}}{\frac{1}{2\beta}}|_{x=0}\\
+&=& \frac{4}{\pi}
+\end{eqnarray*}
+
+
+```{r}
+r_some_pdf =
+  function(ncandidates, beta) {
+    
+    pseudo = numeric(ncandidates)
+    
+    accept = 0
+    
+    iter = 0
+    
+    while (accept < ncandidates) {
+      iter = iter + 1
+      
+      y = runif(1, -beta, beta)
+      
+      u = runif(1)
+      
+      if (u <= (2 / (pi * beta ^ 2) * sqrt(beta ^ 2 - y ^ 2)) / (dunif(y, -beta, beta) *
+                                                                 4 / pi)) {
+        accept = accept + 1
+        pseudo[[accept]] = y
+      }
+      
+    }
+    print(iter/ncandidates)
+    print(4/pi)
+    return(pseudo)
+  }
+
+
+set.seed(123123)
+b = runif(1,0,10)
+x = r_some_pdf(100, b)
+hist(x, prob = T)
+y = seq(-b, b, 0.01)
+lines(y, (2 / (pi * b^2) * sqrt(b ^ 2 - y ^ 2)))
+
+
 ```
+
 
 
 
