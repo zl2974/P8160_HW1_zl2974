@@ -1,0 +1,100 @@
+---
+title: "Homework 1 - Monte Carlo Methods"
+author: "Zhuohui(Jeffrey) Liang ZL2974"
+
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# Problem 1
+The standard Laplace distribution has density $f(x) = 0.5e^{-|x|}, x\in
+(-\infty, \infty)$. Please provide an algorithm that uses the inverse transformation method to generate a random sample from this distribution. Use the $U(0,1)$ random number generator in  \em{\bf{R}}, write a  \em{\bf{R}}-function to implement the algorithm. Use visualization tools to validate your algorithm (i.e., illustrate whether the random numbers generated from your function truely follows the standard Laplace distribution.)
+
+# Answer: your answer starts here...
+
+$$F(X) =
+\begin{cases}
+\int_{-\infty}^x{0.5e^{x}}dx = 0.5e^x & \text{if x <0;}\\
+0.5 + \int_{0}^x{0.5e^{-x}}dx = 1- 0.5e^{-x} & \text{if}~x \ge 0\\
+\end{cases}$$
+
+s.t. 
+$$F^{-1}(u) =
+\begin{cases}
+\log{2u} & \text{if u <0.5;}\\
+-\log{(2-2u)} & u \in [0.5,1]
+\end{cases}$$
+
+```{r p1}
+rlaplace = 
+  function(number_of_randomize){
+    unif_vec = runif(number_of_randomize)
+    laplace_vec = 
+      (unif_vec < 0.5) * log(2*unif_vec) -
+      between(unif_vec,0.5,1) * log(2 - 2*unif_vec)
+    return(laplace_vec)
+  }
+
+rlaplace(10000) %>% 
+  as_tibble() %>% 
+  ggplot(aes(x = value)) +
+  geom_density(adjust = 2)
+
+```
+$\blacksquare$
+
+#Problem 2
+
+Use the inverse transformation method to  derive an algorithm for generating a Pareto random number with $U\sim U(0,1)$, where the Pareto random number has a probability density function 
+     $$f(x; \alpha, \gamma)=\frac{\gamma\alpha^{\gamma}}{x^{\gamma+1}} I\{x\ge \alpha\}$$ with two parameters $\alpha >0$ and $\gamma>0$. Use visualization tools to validate your algorithm (i.e., illustrate whether the random numbers generated from your function truely follows the target distribution.)
+
+\begin{eqnarray*}
+F(x; \alpha, \gamma) & = & \gamma\alpha^\gamma\int_\alpha^x{s^{-(\gamma+1)}ds}\\
+& = & 1 - \alpha^\gamma * x^{-\gamma}
+\end{eqnarray*}
+
+\begin{eqnarray*}
+F^{-1}(u; \alpha, \gamma) & = & (\frac{1-u}{\alpha^\gamma})^{-\frac{1}{\gamma}}\\
+&=& \alpha *(1-u)^{-\frac{1}{\gamma}}
+\end{eqnarray*}
+
+```{r}
+rpareto =
+  function(number_of_randomize, alpha, gamma) {
+    
+    u = runif(number_of_randomize)
+    pareto =
+      alpha * (1-u)^(-1/gamma)
+    
+    return(pareto)
+  }
+
+set.seed(123123)
+a = 2
+rpareto(10000,a,2) %>%
+  as_tibble() %>%
+  ggplot(aes(x = value)) +
+  geom_density(adjust = 2) +
+  geom_vline(aes(xintercept = a))
+```
+
+#Problem 3
+
+Construct an algorithm for using the acceptance/rejection method to generate 100 pseudorandom
+ variable from the pdf
+ $$f(x) = \frac{2}{\pi \beta^2} \sqrt{\beta^2-x^2}, \,\, -\beta \le x \le \beta.$$
+The simplest choice for $g(x)$ is the $U(-\beta, \beta)$ distribution but other choices are possible as well. Use visualization tools to validate your algorithm (i.e., illustrate whether the random numbers generated from your function truely follows the target distribution.)
+
+# Answer:  your answer starts here...
+```{r }
+#Your R codes/functions 
+```
+
+
+
+
+
