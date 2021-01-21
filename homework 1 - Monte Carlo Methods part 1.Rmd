@@ -41,7 +41,8 @@ rlaplace =
 
 set.seed(123123)
 x = rlaplace(1000) %>%
-  hist(., probability = T)
+  hist(., probability = T,
+       ylim = c(0, 0.6))
 y = seq(-10, 10, 0.01)
 lines(y, 0.5 * exp(-abs(y)))
 
@@ -79,7 +80,8 @@ set.seed(123123)
 a = runif(1,0,10)
 g = runif(1,0,10)
 x = rpareto(1000,a,g) %>%
-  hist(., probability = T)
+  hist(., probability = T,
+       ylim = c(0,0.8))
 y = seq(2, 50, 0.01)
 lines(y, g*a^g/y^(g+1)*(y>a))
 ```
@@ -125,8 +127,6 @@ r_some_pdf =
       }
       
     }
-    print(iter/ncandidates)
-    print(4/pi)
     return(pseudo)
   }
 
@@ -140,6 +140,7 @@ lines(y, (2 / (pi * b^2) * sqrt(b ^ 2 - y ^ 2)))
 
 
 ```
+
 
 
 
