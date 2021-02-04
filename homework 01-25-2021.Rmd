@@ -1,0 +1,180 @@
+---
+title: "Homework 01-25-2021"
+author: "Leave your name and uni here"
+
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+# Problem 1
+
+Develop two Monte Carlo methods for the estimation of $\theta=\int_0^1 e^{x^2} dx$ and implement in \em{\bf{R}} .
+
+# Answer:  your answer starts here...
+
+Method 1
+
+Introduce Let $Y\sim U(0,1)$
+$$\theta = \int_0^1{e^{y^2}*1dx}=E[e^{y^2}]$$
+```{r method_1}
+set.seed(123123)
+y = runif(1000, 0, 1)
+
+gfun = function(y) {
+  return((exp(y ^ 2)))
+}
+
+gx =
+  gfun(y)
+
+theta_estimate =
+  list(theta = mean(gx),
+       var_theta = var(gx))
+
+integrate(function(x)
+  exp(x ^ 2), 0, 1)
+```
+
+Method 2
+```{r}
+plot.function(gfun,0,1)
+```
+
+looking at the function, which is similar to a exponetial funciton, thus 
+introducing $f(x) = e^x$ as control variate, we have:
+
+$$\theta = \int_0^1{\beta*e^x + (e^{x^2}-\beta*e^x)dx} = \beta*e^x|^1_0+E[(e^{x^2}-\beta*e^x)]$$
+```{r method2}
+ffun = function(y){
+  return(exp(y))
+}
+
+fx = ffun(y)
+
+b = lm(gx~fx)$coef[2]
+
+theta_estimate_2 =
+  list(theta = mean(b*(exp(1)-1)+(gx-b*fx)),
+       theta2 = sum(lm(gx~fx)$coef*c(1,mean(fx))),
+       var_theta =var((b*(exp(1)-1)+(gx-b*fx)))
+       )
+
+theta_estimate_2
+  
+```
+
+
+
+# Problem 2
+Show that in estimating $\theta=E\{\sqrt{1-U^2}\}$ it is better to use $U^2$ rather than $U$ as the control variate, where $U\sim U(0,1)$.  To do this, use simulation to approximate the necessary covariances. In addition, implement your algorithms in  \em{\bf{R}}.
+
+# Answer:  your answer starts here...
+```{r q2}
+set.seed(123123)
+
+y = runif(1000, 0, 1)
+
+gfun = function(x)
+  return(sqrt(1 - x ^ 2))
+
+f1fun = function(x)
+  return(x ^ 2)
+
+f2fun = function(x)
+  return(x)
+
+gx = gfun(y)
+
+f1x = f1fun(y)
+
+b1 = lm(gx ~ f1x)$coef[2]
+
+f2x = f2fun(y)
+
+b2 = lm(gx ~ f2x)$coef[2]
+
+theta_1 =
+  b1 * (1 / 3) + gx - b1 * f1x
+
+theta_2 =
+  b2 * (1 / 2) + gx - b2 * f2x
+
+result =
+  tibble(
+    model = c("gx", "U^2", "U"),
+    theta = c(mean(gx), mean(theta_1), mean(theta_2)),
+    effic = c(0, (var(gx) - var(theta_1)), (var(gx) - var(theta_2))) / var(gx)
+  )
+
+knitr::kable(result)
+```
+
+
+This result shows that $U^2$ has higher efficiency than $U$, the plot shows that,
+$1 - U^2$ is more resemble to the original function. Corelation between simulated
+ data shows that same conclusion(`r c(cor(gx,f1x),cor(gx,f2x))`)
+
+```{r}
+plot.function(gfun,0,1)
+plot.function(function(x) 1-f1fun(x),0,1,add=T,col = "red")
+plot.function(function(x) 1-f2fun(x),0,1,add=T,col = "blue")
+```
+
+
+
+# Problem 3
+Obtain a Monte Carlo estimate of
+$$\int_1^\infty \frac{x^2}{\sqrt{2\pi}} e^{-\frac{x^2}{2}} dx$$
+by importance sampling and evaluate its variance. Write a  \em{\bf{R}} function to implement your procedure.
+
+# Answer:  your answer starts here...
+
+### Method 1
+\begin{eqnarray}
+\theta = \int{\frac{\frac{x^2}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}*(I>1)+0*(I<=0)}
+{\frac{1}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}}} *\frac{1}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}dx
+\end{eqnarray}
+
+```{r}
+set.seed(123123)
+
+y = rgamma(1000,1,1/2)
+
+gfun = function(x) return(x^2/sqrt(2*pi)*exp(-x^2/2)*(x>1))
+
+gx = gfun(y)
+
+y = dgamma(y,1,1/2)
+
+theta = mean(gx/y)
+```
+
+### Method 2 
+We first us change of variables, where we take x = tan(y), s.t
+\begin{eqnarray*}
+\theta &=& \int_1^\infty \frac{x^2}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}dx \\
+&=& \int_{\pi/4}^{\pi/2}\frac{tan(y)^2}{\sqrt{2\pi}}* e^{-\frac{tan(y)^2}{2}}\frac{2}{cos(2y)+1}dy
+\end{eqnarray*}
+
+```{r}
+y = runif(1000,pi/4,pi/2)
+
+yfun =
+  function(x) {
+    return(tan(x) ^ 2 / sqrt(2 * pi) * exp(-tan(x) ^ 2) / 2) * 2 / (cos(2*x) +
+                                                                      1)
+  }
+
+gx = yfun(y)
+
+yx = 4/pi
+
+theta = mean(gx/yx)
+
+```
+
