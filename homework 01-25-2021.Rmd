@@ -138,6 +138,8 @@ by importance sampling and evaluate its variance. Write a  \em{\bf{R}} function 
 
 # Answer:  your answer starts here...
 
+From wolfarm|alpha we know that the integral integrate to 0.40.
+
 ### Method 1
 \begin{eqnarray}
 \theta = \int{\frac{\frac{x^2}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}*(I>1)+0*(I<=0)}
