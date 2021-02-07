@@ -6,8 +6,25 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(readxl)
+library(patchwork)
+knitr::opts_chunk$set(
+  fig.height = 6,
+  fig.width = 8,
+  message = F,
+  echo = T,
+  warning = F,
+  cache = T
+)
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis",
+  digits = 3
+)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
 ```
 
 
@@ -74,49 +91,137 @@ theta_estimate_2
 Show that in estimating $\theta=E\{\sqrt{1-U^2}\}$ it is better to use $U^2$ rather than $U$ as the control variate, where $U\sim U(0,1)$.  To do this, use simulation to approximate the necessary covariances. In addition, implement your algorithms in  \em{\bf{R}}.
 
 # Answer:  your answer starts here...
+
+## Objective:
+
+We are interest in estimating the performance of $U^2$ and $U$ as a control variate to estimate $\theta=E\{\sqrt{1-U^2}\}$, which $U\sim U(0,1)$,
+
+## Data Genearation Mechanisms :
+
+We generate data from $U\sim U(0,1)$ with sample size(n) from $e^2$ to $e^10$
+
+## Estimate and method
+
+$\theta=E\{\sqrt{1-U^2}\}$ will be estimate by:
+
+* $\theta_0 = \frac{1}{n}\sum^n_{i=1}\sqrt{1-U^2}$
+
+* $\theta_1 = \int\beta_1uf_1(u)du+\frac{1}{n}\sum^n_{i=1}(\sqrt{1-U^2}-\beta_1U)$
+
+* $\theta_1 = \int\beta_2u^2f_2(u)du+\frac{1}{n}\sum^n_{i=1}(\sqrt{1-U^2}-\beta_2U^2)$
+
+where $\beta$ is estimate by $\frac{-cov(\sqrt{1-U^2},g_i(U))}{var(g_i(U))}$
+
+each estimate is simulated N times
+
+## Performance
+
+Variance of the estimate and the mean sum of square of $\theta_i$ and $\theta_0$ will be estimate as well as their efficiency $\frac{var(theta_0)-cov(theta_0,theta_i)}{var(theta_0)}$
+
 ```{r q2}
-set.seed(123123)
+simulating =
+  function(sample_size = 100,simulation = 1000){
+    set.seed(123123)
+    
+    result = tibble()
+    
+    gfun = function(x)
+      return(sqrt(1 - x ^ 2))
+    
+    f1fun = function(x)
+      return(x ^ 2)
+    
+    f2fun = function(x)
+      return(x)
+    
+    for (i in 1:simulation) {
+      y = runif(sample_size, 0, 1)
 
-y = runif(1000, 0, 1)
+      gx = gfun(y)
+      
+      f1x = f1fun(y)
+      
+      b1 = lm(gx ~ f1x)$coef[2]
+      
+      f2x = f2fun(y)
+      
+      b2 = lm(gx ~ f2x)$coef[2]
+      
+      theta_1 =
+        b1 * (1 / 3) + gx - b1 * f1x
+      
+      theta_2 =
+        b2 * (1 / 2) + gx - b2 * f2x
+      
+      result = result %>%
+        rbind(
+          tibble(
+            sample_size = rep(sample_size, 3),
+            model = c("gx", "U^2", "U"),
+            theta = c(mean(gx), mean(theta_1), mean(theta_2)),
+            variance = c(var(gx), var(theta_1), var(theta_2)),
+            MSE = list(gx, theta_1, theta_2) %>% lapply(function(x)
+              mean(x - mean(gx)) ^ 2) %>% as.numeric(),
+            effic = c(0, (var(gx) - var(theta_1)), (var(gx) - var(theta_2))) / var(gx)
+          )
+        )
+    }
+    
+    result = result %>% 
+      group_by(model,sample_size) %>% 
+      summarise(
+            variance = var(theta),
+            theta = mean(theta),
+            MSE = mean(MSE),
+            effic = mean(effic)
+      ) %>% 
+      ungroup()
+    
+    return(result)
+    
+  }
 
-gfun = function(x)
-  return(sqrt(1 - x ^ 2))
+result = tibble()
 
-f1fun = function(x)
-  return(x ^ 2)
+for (i in seq(2:10)){
+  n = exp(i)
+  
+  result = result %>% 
+    rbind(
+      simulating(n,1000)
+    )
+}
 
-f2fun = function(x)
-  return(x)
-
-gx = gfun(y)
-
-f1x = f1fun(y)
-
-b1 = lm(gx ~ f1x)$coef[2]
-
-c(cor(gx,f1x),b1)
-
-f2x = f2fun(y)
-
-b2 = lm(gx ~ f2x)$coef[2]
-
-c(cor(gx,f2x),b2)
-
-theta_1 =
-  b1 * (1 / 3) + gx - b1 * f1x
-
-theta_2 =
-  b2 * (1 / 2) + gx - b2 * f2x
-
-result =
-  tibble(
-    model = c("gx", "U^2", "U"),
-    theta = c(mean(gx), mean(theta_1), mean(theta_2)),
-    effic = c(0, (var(gx) - var(theta_1)), (var(gx) - var(theta_2))) / var(gx)
-  )
-
-knitr::kable(result)
+knitr::kable(result,digits = 6)
 ```
+
+
+```{r ehco =F}
+p1 = result %>%
+  ggplot(aes(
+    x = sample_size,
+    y = MSE,
+    color = as.factor(model),
+    group = as.factor(model)
+  )) +
+  geom_path()+
+  scale_x_continuous(trans = "log")+
+  scale_y_continuous(trans = "log")
+
+p2 = result %>%
+  ggplot(aes(
+    x = sample_size,
+    y = effic,
+    color = as.factor(model),
+    group = as.factor(model)
+  )) +
+  geom_path()+
+  scale_x_continuous(trans = "log")+
+  scale_y_continuous(trans = "log")
+
+p1+p2
+```
+
 
 
 This result shows that $U^2$ has higher efficiency than $U$, the plot shows that,
