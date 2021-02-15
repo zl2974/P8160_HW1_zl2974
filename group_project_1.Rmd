@@ -1,0 +1,133 @@
+---
+title: "Group project"
+author: "Jeffrey LIANG"
+date: "2/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Generate R.V.
+
+## Generate weak variable
+
+```{r echo = F}
+#define strong
+is_strong =
+  function(beta, c, n_parameter, data_size) {
+    if (c <= 0) {
+      stop("c must be positive define")
+    }
+    return(abs(beta) > c * sqrt(log(n_parameter) / data_size))
+  }
+
+# define weak
+is_weak =
+  function(beta, c, n_parameter, data_size) {
+    if (c <= 0) {
+      stop("c must be positive define")
+    }
+    return(abs(beta) < c * sqrt(log(n_parameter) / data_size))
+  }
+```
+
+```{r}
+generate_data = 
+  function(
+    data_size = 1000,
+    n_parameter = 50,
+    p_weak = 0.5,
+    p_weak_and_corr = 0.5,
+    c = 1
+  ){
+    # First generate uncorelated data, which number of row is 
+    n_uncorr = 
+      (n_parameter * (1-p_weak*p_weak_and_corr))%/%1
+    
+    n_corr = n_parameter - n_uncorr
+    
+    uncorr = 
+      MASS::mvrnorm(
+      n = data_size,
+      mu = rep(0,n_uncorr),
+      Sigma = diag(n_uncorr)
+    )
+    # Then generate strong and weak section
+    strong = 
+      uncorr[,seq(1,n_parameter*(1-p_weak))]
+    
+    weak_uncorr =
+      uncorr[,-(seq(1,n_parameter*(1-p_weak)))]
+    
+    #finally generate weak and corr
+    weak_corr =
+      rerun(n_corr,
+                  rnorm(1) *
+                    strong[,sample(seq(1, n_parameter * (1 - p_weak)), 1)] +
+                    rnorm(data_size))
+    weak_corr = matrix(unlist(weak_corr),nrow = 1000)
+    
+    weak = cbind(weak_corr,weak_uncorr)
+    
+    
+    # generate beta
+    beta_strong =
+      c * sqrt(log(n_parameter) / data_size) / runif(ncol(strong),-1, 1)
+    
+    beta_weak = 
+      c * sqrt(log(n_parameter) / data_size) * runif(n_parameter - ncol(strong),-1, 1)
+    
+    beta = c(beta_strong,beta_weak)
+    
+    X = scale(cbind(strong,weak))
+    
+    Y = X %*% beta
+    
+    return(list(
+      Y = Y,
+      X = X,
+      beta = beta
+    ))
+  }
+```
+
+
+
+# Define Model
+
+```{r}
+simulation =
+  function(x,y){
+    dataframe =
+      tibble::tibble(
+        y = y
+      ) %>% 
+      cbind(x)
+    
+    aic =
+      step(object = lm(y~1,dataframe),
+           scope = formula(lm(y~.,dataframe)),
+           direction = "forward",
+           k = 2,
+           trace = 0) # model step object
+    
+    lasso =
+      glmnet::cv.glmnet(
+        x = x,y = y,
+        nfolds = 10,
+        type.measure = "mse",
+        alpha = 1
+      ) # model glnmet object
+    
+    return(list(
+      aic = aic,
+      lasso = lasso
+    )) # return both object in a list
+  }
+```
+
