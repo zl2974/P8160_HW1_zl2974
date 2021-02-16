@@ -1,0 +1,136 @@
+---
+title: "GP1_try0214"
+author: "Wenbo Fei"
+date: "2/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(mgcv) # generate multivariate normal
+library(glmnet)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# function to generate 1 simulation data
+```{r func_simulDATA}
+simulDATA <- function(n = 1000, p = 50, p_true = 50, p_strong = 5, ratio_weak_cor = 2, c = 1, sigma = 0.5){
+  # n: number of observations
+  # p: number of predictors (for X matrix)
+  # c: a positive constant for identifying strong and weak predictors
+  # sigma: sdandard error of Y|X
+  
+  # try for different setting
+  # p_true: number of true predictors (for generating Y)
+  # p_strong : number of strong predictors 
+  # ratio_weak_cor: ratio of (weak but correlated predictor number)/(strong predictor number), can be any value [0,1], or any integer greater than one(if >1 and not an integer, will reset as the closest integer)
+  # p_weak_cor : number of weak but correlated predictors
+  # p_weak_ind : number of weak and independent predictors
+
+  # generate X
+  X = matrix(rnorm(n * p), n, p) # predictors, data matrix X for regression
+  # as generating X is random, here just treat first p_strong predictors as strong predictors, then p_weak_cor predictors as weak but correlated predictors, p_weak_ind predictors as weak and independent predictors, all the left as null predictors.
+  
+  if(ratio_weak_cor <= 1){
+    p_weak_cor = round(p_strong * ratio_weak_cor) # p_weak_cor need to be an integer
+    p_weak = p_true - p_strong
+    p_weak_ind = p_weak - p_weak_cor
+    # to avoid multicolinearity, no correlation between strong predictors
+    if(p_weak_cor > 0 ){
+      # revise correlated cols'. 
+      for (i in 1:p_weak_cor){
+        mu = c(0,0)
+        cor_temp = sample(c(-1,1),1)*sample(2:9,1)/10 # randomly generate a correlation between from (+)(-)0.2, ..., 0.9 
+        V = matrix(c(1, cor_temp, cor_temp, 1), nrow = 2)
+        X[ ,c(i, i + p_strong)] = rmvn(n,mu,V)
+        # e.g, if p_strong=5, p_weak_cor=2, then 1st and 6th cols of X are correlated, 2nd and 7th cols of X are correlated
+      }
+    }
+  }else{
+    ratio_weak_cor = round(ratio_weak_cor) # set ratio to be an integer, each strong predictor is correlated with ratio_weak_cor weak predictors
+    p_weak_cor = round(p_strong * ratio_weak_cor) # p_weak_cor need to be an integer
+    p_weak = p_true - p_strong
+    p_weak_ind = p_weak - p_weak_cor
+    # revise correlated cols'. 
+    for (i in 1:p_strong){
+      mu = rep(0, (ratio_weak_cor + 1) )
+      cor_temp = sample(c(-1,1),ratio_weak_cor, replace = TRUE)*sample(2:9,ratio_weak_cor, replace = TRUE)/10 # randomly generate correlations between from (+)(-)0.2, ..., 0.9 
+        
+        # for simplicity, no correlation between weak predictors; each weak but corelated predictor only correlates with one strong predictor
+      V_temp = matrix(0, nrow = ratio_weak_cor + 1, ncol = ratio_weak_cor + 1)
+      diag(V_temp) = 1
+      V_temp[1,-1] = cor_temp
+      V_temp[-1,1] = cor_temp
+      V = V_temp
+      col_ix = c(i, (p_strong + (i-1)*ratio_weak_cor + 1):(p_strong + i*ratio_weak_cor)) 
+      X[ ,c(i, i + p_strong)] = rmvn(n,mu,V)
+        # e.g, if p_strong=5, ratio_weak_cor=2, then 1st&6th, 1st&7th cols of X are correlated, 2nd&7th, 2nd&8th cols of X are correlated, ...
+      }
+    }
+  # View(cor(X)) # check X cor
+  
+  #generate beta
+  threshold = c*sqrt(log(p)/n) # threshold for identifying weak/strong predictor
+  beta_strong = runif(p_strong, min = 5*threshold, max = 10*threshold)
+  beta_weak = runif(p_weak, min = threshold/5, max = threshold/2) # can be adjusted
+  beta = c(beta_strong, beta_weak)
+  
+  #generate Y
+  Y = runif(1) + X[,1:p_true] %*% beta + rnorm(n, 0, sigma) # slope + predictors + random error
+  X.df = as.data.frame(X)
+  return(list(Y, beta, X, X.df))
+}
+
+data.test = simulDATA()
+X.test = data.test[[3]]
+View(cor(X.test))
+# summary(lm(Y~., data = as.data.frame(X))) # check data
+```
+
+# function to do variable selection
+```{r fun_simulMODEL}
+simulMODEL <- function(data){
+  # data generate from simulDATA()
+  Y = data[[1]]
+  true_beta = data[[2]]
+  X = data[[3]]
+  X.df = data[[4]]
+  # Forward Selection
+  fit.forward <- step(object = lm(Y ~ 1, data = X.df), 
+                      scope = formula(lm(Y ~ ., data = X.df)), direction = "forward", k = 2, trace = 0) # AIC
+  result_STEP =  fit.forward$coefficients[-1] 
+  
+  # LASSO
+  fit.lasso <- cv.glmnet(X, Y, nfolds = 10, type.measure = "mse") # 5-fold CV using mean squared error
+  param.best <- fit.lasso$glmnet.fit$beta[, fit.lasso$lambda == fit.lasso$lambda.1se] # one standard-error rule
+  result_LASSO = param.best[param.best != 0]
+  
+  return(list(true_beta, result_STEP, result_LASSO))
+}
+
+```
+
+# simulation setting 1
+```{r}
+N = 100 # number of simulations for each parameter setting
+
+n.1 = 1000
+p.1 = 50
+p_true.1 = 50 #
+p_strong.1 = 5 #
+ratio_weak_cor = 2 #
+c.1 = 1 #
+sigma.1 = 0.5
+
+data_simul1 = list()
+result_simul1 = list()
+for (i in 1:N){
+  data_temp = simulDATA(n.1, p.1,p_true.1, p_strong.1, ratio_weak_cor.1, c.1, sigma.1)
+  data_simul1[[i]] = data_temp
+  result_simul1[[i]] = simulMODEL(data_temp)
+}
+
+#check result for the 1st simulation
+result_simul1[[1]]
+```
+
