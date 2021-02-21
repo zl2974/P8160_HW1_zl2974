@@ -1,0 +1,105 @@
+---
+title: "Homework on optimization algorithms."
+date: "P8160 Advanced Statistical Computing "
+output: pdf_document #html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(survival)
+require(quantreg)
+require(glmnet)
+require(MASS)
+require(pROC)
+
+set.seed(2021)
+```
+
+
+## Problem 1: 
+Design an optmization algorithm to find the minimum of the continuously differentiable function 
+$$f(x) =-e^{-x}\sin(x)$$ on the closed interval $[0,1.5]$. Write out your algorithm and implement it into \textbf{R}.
+
+
+# Answer: your answer starts here...
+
+```{r }
+#R codes:
+```
+
+## Problem 2:
+
+The Poisson distribution, written as  
+$$P(Y=y) = \frac{\lambda^y e^{-\lambda}}{y!}$$
+for $\lambda > 0$,
+is often used to model ``count'' data ---
+e.g., the number of events in a given time period. 
+
+A Poisson regression model states that
+$$Y_i \sim \textrm{Poisson}(\lambda_i),$$
+where
+$$\log \lambda_i = \alpha + \beta x_i $$
+for some explanatory variable $x_i$.  The question is how to estimate $\alpha$ and $\beta$ given a
+set of independent data $(x_1, Y_1), (x_2, Y_2), \ldots, (x_n, Y_n)$.
+
+
+\begin{enumerate}
+\item Generate a random sample $(x_i, Y_i)$ with $n=500$ from the Possion regression model above. 
+You can choose the true parameters $(\alpha,\beta)$ and the distribution of $X$.
+
+\item Write out the likelihood of your simulated data, and its Gradient and Hessian functions. 
+
+\item  Develop a modify Newton-Raphson algorithm that allows the step-halving and re-direction steps
+to ensure ascent directions and monotone-increasing properties. 
+
+\item Write down your algorithm and implement it in R to estimate $\alpha$ and $\beta$ from your simulated data.
+\end{enumerate}
+
+
+
+
+# Answer: your answer starts here...
+
+```{r }
+#R codes:
+```
+
+
+
+
+## Problem 3: 
+
+
+The data \textit{breast-cancer.csv} have 569 row and 33 columns. The first column \textbf{ID} lables individual breast tissue images; The second column \textbf{Diagnonsis} indentifies if the image is coming from cancer tissue or benign cases (M=malignant, B = benign). There are 357  benign and 212  malignant cases. The other 30 columns correspond to mean, standard deviation and the largest values (points on the tails) of the distributions of the following 10 features computed for the cellnuclei;
+\begin{itemize}
+\item radius (mean of distances from center to points on the perimeter)
+\item texture (standard deviation of gray-scale values)
+\item perimeter
+\item area
+\item smoothness (local variation in radius lengths)
+\item compactness (perimeter\^ 2 / area - 1.0)
+\item concavity (severity of concave portions of the contour)
+\item concave points (number of concave portions of the contour)
+\item symmetry
+\item fractal dimension ("coastline approximation" - 1)
+\end{itemize}
+
+
+The goal  is to build a predictive model based on logistic regression to facilitate cancer diagnosis; 
+
+
+\begin{enumerate}
+\item Build a logistic model to classify the images into  malignant/benign, and write down your likelihood function, its gradient and Hessian matrix.  
+
+\item Build a logistic-LASSO model to select features, and implement a path-wise coordinate-wise optimization algorithm to obtain a path of solutions with a sequence of descending $\lambda$'s. 
+
+
+\item Write a report to summarize your findings.
+\end{enumerate}
+
+```{r }
+
+```
+
+
