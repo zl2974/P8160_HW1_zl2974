@@ -1,0 +1,430 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{ifxetex,ifluatex}
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\hypersetup{
+  pdftitle={Homework on optimization algorithms.},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+\urlstyle{same} % disable monospaced font for URLs
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.77,0.63,0.00}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifluatex
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+
+\title{Homework on optimization algorithms.}
+\author{}
+\date{\vspace{-2.5em}P8160 Advanced Statistical Computing}
+
+\begin{document}
+\maketitle
+
+\hypertarget{problem-1}{%
+\subsection{Problem 1:}\label{problem-1}}
+
+Design an optmization algorithm to find the minimum of the continuously
+differentiable function \[f(x) =-e^{-x}\sin(x)\] on the closed interval
+\([0,1.5]\). Write out your algorithm and implement it into \textbf{R}.
+
+\hypertarget{answer-your-answer-starts-here}{%
+\section{Answer: your answer starts
+here\ldots{}}\label{answer-your-answer-starts-here}}
+
+To find the minimum of a continuously function,we first make some
+changes to the function let
+
+\[g(x) = e^{x}\sin(x)\]
+
+and instead find the maximum of g(x).
+
+The gradient of \(g(x)\) is : \[\nabla g(x) = e^x(\sin(x)+\cos(x))\]
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(}\FunctionTok{tibble}\NormalTok{(}\AttributeTok{x =} \FunctionTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{,}\FloatTok{1.5}\NormalTok{,}\AttributeTok{length =} \DecValTok{10}\NormalTok{)),}\FunctionTok{aes}\NormalTok{(x))}\SpecialCharTok{+}
+  \FunctionTok{geom\_function}\NormalTok{(}\AttributeTok{fun =} \ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{exp}\NormalTok{(x)}\SpecialCharTok{*}\NormalTok{(}\FunctionTok{sin}\NormalTok{(x)}\SpecialCharTok{+}\FunctionTok{cos}\NormalTok{(x)))}
+\end{Highlighting}
+\end{Shaded}
+
+and the Hessian is: \[\nabla^2g(x) = 2e^x\cos(x)\]
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(}\ControlFlowTok{function}\NormalTok{(x) }\DecValTok{2}\SpecialCharTok{*}\FunctionTok{exp}\NormalTok{(x)}\SpecialCharTok{*}\FunctionTok{cos}\NormalTok{(x),}\AttributeTok{xlim =} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{,}\FloatTok{1.5}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+the hessian is greater than 0 everywhere in {[}0,1.5{]}, so we can't use
+Newton method.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{goose\_egg }\OtherTok{=} 
+  \ControlFlowTok{function}\NormalTok{(}
+\NormalTok{    fun,}
+    \AttributeTok{left =} \ConstantTok{NULL}\NormalTok{,}
+    \AttributeTok{right =} \ConstantTok{NULL}\NormalTok{,}
+    \AttributeTok{range =} \ConstantTok{NULL}\NormalTok{,}
+    \AttributeTok{ratio =} \FloatTok{0.618}\NormalTok{,}
+    \AttributeTok{tol =} \FloatTok{10e{-}4}\NormalTok{,}
+\NormalTok{    ...}
+\NormalTok{  )\{}
+    \ControlFlowTok{if}\NormalTok{ (}\SpecialCharTok{!}\FunctionTok{any}\NormalTok{(left,right))\{}
+\NormalTok{      left }\OtherTok{=}\NormalTok{ range[}\DecValTok{1}\NormalTok{]}
+\NormalTok{      right }\OtherTok{=}\NormalTok{ range[}\DecValTok{2}\NormalTok{]}
+\NormalTok{    \}}
+    
+\NormalTok{    mid\_1 }\OtherTok{=}\NormalTok{ left }\SpecialCharTok{+}\NormalTok{ ratio}\SpecialCharTok{*}\NormalTok{(right }\SpecialCharTok{{-}}\NormalTok{ left)}
+    
+\NormalTok{    f\_mid\_1 }\OtherTok{=} \FunctionTok{fun}\NormalTok{(mid\_1)}
+    
+\NormalTok{    mid\_2 }\OtherTok{=}\NormalTok{ mid\_1 }\SpecialCharTok{+}\NormalTok{ ratio}\SpecialCharTok{*}\NormalTok{(right}\SpecialCharTok{{-}}\NormalTok{mid\_1)}
+    
+\NormalTok{    f\_mid\_2 }\OtherTok{=} \FunctionTok{fun}\NormalTok{(mid\_2)}
+    
+\NormalTok{    f\_left }\OtherTok{=} \FunctionTok{fun}\NormalTok{(left)}
+    
+\NormalTok{    f\_right }\OtherTok{=} \FunctionTok{fun}\NormalTok{(right)}
+    
+\NormalTok{    i }\OtherTok{=} \DecValTok{1}
+    
+    \ControlFlowTok{while}\NormalTok{ (}\FunctionTok{abs}\NormalTok{(f\_left }\SpecialCharTok{{-}}\NormalTok{ f\_right)}\SpecialCharTok{\textgreater{}}\NormalTok{tol }\SpecialCharTok{\&\&}\NormalTok{ i}\SpecialCharTok{\textless{}}\DecValTok{1000}\NormalTok{)\{}
+\NormalTok{      i }\OtherTok{=}\NormalTok{ i }\SpecialCharTok{+} \DecValTok{1}
+      \ControlFlowTok{if}\NormalTok{ (f\_mid\_1 }\SpecialCharTok{\textless{}}\NormalTok{ f\_mid\_2) \{}
+\NormalTok{        f\_left }\OtherTok{=}\NormalTok{ f\_mid\_1}
+\NormalTok{        left }\OtherTok{=}\NormalTok{ mid\_1}
+\NormalTok{      \} }\ControlFlowTok{else}\NormalTok{ \{}
+\NormalTok{        f\_right }\OtherTok{=}\NormalTok{ f\_mid\_2}
+\NormalTok{        right }\OtherTok{=}\NormalTok{ mid\_2}
+\NormalTok{      \}}
+\NormalTok{      mid\_1 }\OtherTok{=}\NormalTok{ left }\SpecialCharTok{+}\NormalTok{ ratio }\SpecialCharTok{*}\NormalTok{ (right }\SpecialCharTok{{-}}\NormalTok{ left)}
+\NormalTok{      f\_mid\_1 }\OtherTok{=} \FunctionTok{fun}\NormalTok{(mid\_1)}
+\NormalTok{      mid\_2 }\OtherTok{=}\NormalTok{ mid\_1 }\SpecialCharTok{+}\NormalTok{ ratio }\SpecialCharTok{*}\NormalTok{ (right }\SpecialCharTok{{-}}\NormalTok{ mid\_1)}
+\NormalTok{      f\_mid\_2 }\OtherTok{=} \FunctionTok{fun}\NormalTok{(mid\_2)}
+\NormalTok{    \}}
+    \FunctionTok{return}\NormalTok{(}\FunctionTok{mean}\NormalTok{(mid\_1,mid\_2))}
+\NormalTok{  \}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{x\_max }\OtherTok{=} \FunctionTok{goose\_egg}\NormalTok{(}\ControlFlowTok{function}\NormalTok{(x) }\FunctionTok{exp}\NormalTok{(x)}\SpecialCharTok{*}\FunctionTok{sin}\NormalTok{(x),}\AttributeTok{range =} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{,}\FloatTok{1.5}\NormalTok{))}
+
+\FunctionTok{print}\NormalTok{(x\_max)}
+
+\FunctionTok{plot}\NormalTok{(x\_max,}\SpecialCharTok{{-}}\FunctionTok{exp}\NormalTok{(x\_max)}\SpecialCharTok{*}\FunctionTok{sin}\NormalTok{(x\_max))}
+
+\FunctionTok{plot}\NormalTok{(}\ControlFlowTok{function}\NormalTok{(x) \{}\SpecialCharTok{{-}}\FunctionTok{exp}\NormalTok{(x)}\SpecialCharTok{*}\FunctionTok{sin}\NormalTok{(x)\}, }\AttributeTok{xlim =} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{,}\FloatTok{1.5}\NormalTok{), }\AttributeTok{add =}\NormalTok{ T)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{problem-2}{%
+\subsection{Problem 2:}\label{problem-2}}
+
+The Poisson distribution, written as\\
+\[P(Y=y) = \frac{\lambda^y e^{-\lambda}}{y!}\] for \(\lambda > 0\), is
+often used to model ``count'\,' data --- e.g., the number of events in a
+given time period.
+
+A Poisson regression model states that
+\[Y_i \sim \textrm{Poisson}(\lambda_i),\] where
+\[\log \lambda_i = \alpha + \beta x_i \] for some explanatory variable
+\(x_i\). The question is how to estimate \(\alpha\) and \(\beta\) given
+a set of independent data
+\((x_1, Y_1), (x_2, Y_2), \ldots, (x_n, Y_n)\).
+
+\begin{enumerate}
+\item Generate a random sample $(x_i, Y_i)$ with $n=500$ from the Possion regression model above. 
+You can choose the true parameters $(\alpha,\beta)$ and the distribution of $X$.
+
+\item Write out the likelihood of your simulated data, and its Gradient and Hessian functions. 
+
+\item  Develop a modify Newton-Raphson algorithm that allows the step-halving and re-direction steps
+to ensure ascent directions and monotone-increasing properties. 
+
+\item Write down your algorithm and implement it in R to estimate $\alpha$ and $\beta$ from your simulated data.
+\end{enumerate}
+
+\hypertarget{answer-your-answer-starts-here-1}{%
+\section{Answer: your answer starts
+here\ldots{}}\label{answer-your-answer-starts-here-1}}
+
+\hypertarget{section}{%
+\subsection{2.1}\label{section}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\BuiltInTok{print}\NormalTok{(}\StringTok{"hello world"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{X }\OtherTok{=} \FunctionTok{rbind}\NormalTok{(}\FunctionTok{rep}\NormalTok{(}\DecValTok{1}\NormalTok{,}\DecValTok{500}\NormalTok{),}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{500}\NormalTok{))}
+\NormalTok{Beta }\OtherTok{=} \FunctionTok{runif}\NormalTok{(}\DecValTok{2}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{10}\NormalTok{)}
+\NormalTok{sigma }\OtherTok{=} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{500}\NormalTok{,}\DecValTok{0}\NormalTok{,}\FloatTok{0.5}\NormalTok{)}
+\NormalTok{lambda }\OtherTok{=} \FunctionTok{exp}\NormalTok{(}\FunctionTok{t}\NormalTok{(X)}\SpecialCharTok{\%*\%}\NormalTok{Beta }\SpecialCharTok{+}\NormalTok{ sigma)}
+\NormalTok{Y }\OtherTok{=} \FunctionTok{map}\NormalTok{(lambda,}\SpecialCharTok{\textasciitilde{}}\FunctionTok{rpois}\NormalTok{(}\DecValTok{1}\NormalTok{,.x)) }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{unlist}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{section-1}{%
+\subsection{2.2}\label{section-1}}
+
+\begin{itemize}
+\item
+  The log-likelihood of Poisson distribution is
+  \[l(Y;\lambda) = \sum \{y*log(\lambda) -\lambda - log(y!)\}\] OR
+  \[l(Y;\alpha,\beta) = \sum \{y*(\alpha+x\beta) -exp(\alpha+x\beta) - log(y!)\}\]
+\item
+  The Score funtion is
+  \[\nabla(Y;\lambda) = \frac{\partial}{\partial\lambda}l(Y;\lambda) = \sum\{\frac{y}{\lambda}-1\}\]
+  OR
+  \[\nabla(Y;\alpha,\beta) = \frac{\partial}{\partial\lambda}l(Y;\lambda) = (\sum\{y-exp(\alpha+x\beta)\},\sum\{y*x-x*exp(\alpha+x\beta)\})\]
+\item
+  The hessian is
+  \[\nabla^2(Y;\lambda) = \frac{\partial^2}{\partial\lambda^2}l(Y;\lambda) = 
+  -\sum\{\frac{y}{\lambda^2}+1\}=\] \textbackslash begin\{pmatrix\}
+  \sum{-exp(\alpha+x\beta)} \& \sum{-x*exp(\alpha+x\beta)}
+  \textbackslash{} \sum{-x*exp(\alpha+x\beta)} \&
+  \sum{-x^2*exp(\alpha+\beta)} \textbackslash end\{\pmatrix\} which is
+  negative defined everywhere.
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{Poisson }\OtherTok{=}
+  \ControlFlowTok{function}\NormalTok{(x,}
+\NormalTok{           lambda) \{}
+\NormalTok{    log\_likelihood }\OtherTok{=} \FunctionTok{sum}\NormalTok{(x }\SpecialCharTok{*} \FunctionTok{log}\NormalTok{(lambda) }\SpecialCharTok{{-}}\NormalTok{ lambda }\SpecialCharTok{{-}} \FunctionTok{log}\NormalTok{(}\FunctionTok{factorial}\NormalTok{(x)))}
+    
+\NormalTok{    gradient }\OtherTok{=} \FunctionTok{sum}\NormalTok{(x }\SpecialCharTok{/}\NormalTok{ lambda }\SpecialCharTok{{-}} \DecValTok{1}\NormalTok{)}
+    
+\NormalTok{    hessian }\OtherTok{=}\NormalTok{ (}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{) }\SpecialCharTok{*} \FunctionTok{sum}\NormalTok{(x }\SpecialCharTok{/}\NormalTok{ lambda }\SpecialCharTok{{-}} \DecValTok{1}\NormalTok{)}
+    
+    \FunctionTok{return}\NormalTok{(}\FunctionTok{list}\NormalTok{(}
+      \AttributeTok{log\_likelihood =}\NormalTok{ log\_likelihood,}
+      \AttributeTok{gradient =}\NormalTok{ gradient,}
+      \AttributeTok{hessian =}\NormalTok{ hessian}
+\NormalTok{    ))}
+\NormalTok{  \}}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{section-2}{%
+\subsection{2.3}\label{section-2}}
+
+the Newton method updating is:
+\[\nabla g(x_{k+1}) = \nabla g(x_k) + \eta*\nabla^2 g(x_k)(x_{k+1}-x_k)\]
+where \(\eta\) is the step size that ensure
+\(\nabla g(x_{k+1}) > \nabla g(x_k)\)
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#Develop a modify Newton{-}Raphson algorithm that allows the }
+\CommentTok{\#step{-}halving and }
+\CommentTok{\#re{-}direction steps}
+\CommentTok{\#to ensure ascent directions and monotone{-}increasing properties. }
+
+\NormalTok{newton\_update }\OtherTok{=}
+  \ControlFlowTok{function}\NormalTok{(fun,}
+\NormalTok{           previous,}
+           \AttributeTok{step\_size =} \DecValTok{1}\NormalTok{,}
+           \AttributeTok{optimizer =} \StringTok{"identity"}\NormalTok{,}
+           \AttributeTok{backtracking =}\NormalTok{ T,}
+           \AttributeTok{tol =} \FloatTok{10e{-}6}\NormalTok{) \{}
+    \CommentTok{\#take previous gradient and a updated hessian, return update gradient with}
+    \CommentTok{\#backtracking}
+\NormalTok{    trial }\OtherTok{=} \DecValTok{0}
+    
+\NormalTok{    optimizer }\OtherTok{=} \FunctionTok{c}\NormalTok{(}\StringTok{"identity"}\NormalTok{,}\StringTok{"BFGS"}\NormalTok{)}
+\NormalTok{    hessian }\OtherTok{=} \FunctionTok{fun}\NormalTok{(previous)}\SpecialCharTok{$}\NormalTok{hessian}
+\NormalTok{    gradient }\OtherTok{=} \FunctionTok{fun}\NormalTok{(previous)}\SpecialCharTok{$}\NormalTok{gradient}
+    
+    \CommentTok{\#updating}
+\NormalTok{    cur }\OtherTok{=}\NormalTok{ previous }\SpecialCharTok{{-}}\NormalTok{ step\_size }\SpecialCharTok{*} \FunctionTok{solve}\NormalTok{(hessian) }\SpecialCharTok{\%*\%}\NormalTok{ gradient}
+    \CommentTok{\#backtracking}
+    \ControlFlowTok{while}\NormalTok{ (backtracking }\SpecialCharTok{\&}\NormalTok{ cur }\SpecialCharTok{{-}}\NormalTok{ previous }\SpecialCharTok{\textless{}} \DecValTok{0} \SpecialCharTok{\&}\NormalTok{ trial }\SpecialCharTok{\textless{}} \DecValTok{500}\NormalTok{) \{}
+\NormalTok{      step\_size }\OtherTok{=}\NormalTok{ step\_size }\SpecialCharTok{/} \DecValTok{2}
+      
+\NormalTok{      trial }\OtherTok{=}\NormalTok{ trial }\SpecialCharTok{+} \DecValTok{1} \CommentTok{\# avoild dead loops}
+      
+\NormalTok{      cur }\OtherTok{=}\NormalTok{ previous }\SpecialCharTok{{-}}\NormalTok{ step\_size }\SpecialCharTok{*} \FunctionTok{solve}\NormalTok{(hessian) }\SpecialCharTok{\%*\%}\NormalTok{ previous}
+\NormalTok{    \}}
+    
+    \FunctionTok{return}\NormalTok{(cur)}
+\NormalTok{  \}}
+
+\NormalTok{naive\_newton }\OtherTok{=}
+  \ControlFlowTok{function}\NormalTok{(fun,}
+           \CommentTok{\# a function return $gradient and $hessian,}
+           \AttributeTok{init =} \DecValTok{1}\NormalTok{,}
+           \AttributeTok{tol =} \FloatTok{1e{-}6}\NormalTok{,}
+           \AttributeTok{maxtiter =} \DecValTok{2000}\NormalTok{,}
+\NormalTok{           ...) \{}
+    \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{any}\NormalTok{(}\FunctionTok{is.null}\NormalTok{(}\FunctionTok{fun}\NormalTok{(init)}\SpecialCharTok{$}\NormalTok{loglink),}
+            \FunctionTok{is.null}\NormalTok{(}\FunctionTok{fun}\NormalTok{(init)}\SpecialCharTok{$}\NormalTok{gradient),}
+            \FunctionTok{is.null}\NormalTok{(}\FunctionTok{fun}\NormalTok{(init)}\SpecialCharTok{$}\NormalTok{hessian))) \{}
+      \FunctionTok{stop}\NormalTok{(}\StringTok{"fun input must return both gradient and hessian"}\NormalTok{)}
+\NormalTok{    \}}
+\NormalTok{    result }\OtherTok{=} \FunctionTok{tibble}\NormalTok{()}
+    
+\NormalTok{    i }\OtherTok{=} \DecValTok{1}
+    
+\NormalTok{    f }\OtherTok{=} \FunctionTok{fun}\NormalTok{(init) }\CommentTok{\# g(x\_\{k+1\})}
+    
+\NormalTok{    cur }\OtherTok{=}\NormalTok{ init}
+    
+\NormalTok{    prevlog }\OtherTok{=} \SpecialCharTok{{-}}\ConstantTok{Inf} \CommentTok{\# \textbackslash{}nabla g(x\_\{k\})}
+    
+    \ControlFlowTok{while}\NormalTok{ (}\FunctionTok{abs}\NormalTok{(f}\SpecialCharTok{$}\NormalTok{loglink }\SpecialCharTok{{-}}\NormalTok{ prevlog) }\SpecialCharTok{\textgreater{}}\NormalTok{ tol }\SpecialCharTok{\&\&}\NormalTok{ i }\SpecialCharTok{\textless{}}\NormalTok{ maxtiter) \{}
+\NormalTok{      i }\OtherTok{=}\NormalTok{ i }\SpecialCharTok{+} \DecValTok{1}
+\NormalTok{      prev }\OtherTok{=}\NormalTok{ cur}
+\NormalTok{      prevlog }\OtherTok{=}\NormalTok{ f}\SpecialCharTok{$}\NormalTok{loglink}
+\NormalTok{      cur }\OtherTok{=} \FunctionTok{newton\_update}\NormalTok{(f, prev)}
+\NormalTok{      f }\OtherTok{=} \FunctionTok{fun}\NormalTok{(cur)}
+\NormalTok{      result }\OtherTok{=} 
+        \FunctionTok{rbind}\NormalTok{(result,}\FunctionTok{list}\NormalTok{(}\AttributeTok{x\_i =}\NormalTok{ prev,}
+                 \StringTok{\textasciigrave{}}\AttributeTok{g(x\_i)}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ f}\SpecialCharTok{$}\NormalTok{loglink,}
+                 \AttributeTok{x\_i\_1 =}\NormalTok{ cur))}
+\NormalTok{    \}}
+    \FunctionTok{return}\NormalTok{(result)}
+\NormalTok{  \}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{naive\_newton}\NormalTok{(Poisson\_Y)}
+\end{Highlighting}
+\end{Shaded}
+
+\hypertarget{problem-3}{%
+\subsection{Problem 3:}\label{problem-3}}
+
+The data \textit{breast-cancer.csv} have 569 row and 33 columns. The
+first column \textbf{ID} lables individual breast tissue images; The
+second column \textbf{Diagnonsis} indentifies if the image is coming
+from cancer tissue or benign cases (M=malignant, B = benign). There are
+357 benign and 212 malignant cases. The other 30 columns correspond to
+mean, standard deviation and the largest values (points on the tails) of
+the distributions of the following 10 features computed for the
+cellnuclei;
+
+\begin{itemize}
+\item radius (mean of distances from center to points on the perimeter)
+\item texture (standard deviation of gray-scale values)
+\item perimeter
+\item area
+\item smoothness (local variation in radius lengths)
+\item compactness (perimeter\^ 2 / area - 1.0)
+\item concavity (severity of concave portions of the contour)
+\item concave points (number of concave portions of the contour)
+\item symmetry
+\item fractal dimension ("coastline approximation" - 1)
+\end{itemize}
+
+The goal is to build a predictive model based on logistic regression to
+facilitate cancer diagnosis;
+
+\begin{enumerate}
+\item Build a logistic model to classify the images into  malignant/benign, and write down your likelihood function, its gradient and Hessian matrix.  
+
+\item Build a logistic-LASSO model to select features, and implement a path-wise coordinate-wise optimization algorithm to obtain a path of solutions with a sequence of descending $\lambda$'s. 
+
+
+\item Write a report to summarize your findings.
+\end{enumerate}
+
+\end{document}
