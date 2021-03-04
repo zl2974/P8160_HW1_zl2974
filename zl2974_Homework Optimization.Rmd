@@ -345,8 +345,6 @@ Y = breast$diagnosis
 
 X = model.matrix(diagnosis~.,breast)[,-1]
 
-X = X = cbind((rep(1,length(Y))),X)
-
 dat = list(y = Y, x = X)
 
 ans = glm(Y~X,family = binomial())
@@ -402,7 +400,8 @@ Bernoulli =
            theta_vec){
     Y = data$y %>% as.numeric()
     Y = Y-1
-    X = data$x
+    X = data$x/1e+4
+    X = cbind(rep(1,length(Y)),X)
     loglink = sum(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
     
     fisher = var(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
@@ -421,14 +420,14 @@ Bernoulli =
     hessian = matrix(hessian,ncol = length(theta_vec))
                  
     return(
-      list(loglink = loglink,
-           fisher = fisher,
-           gradient  = gradient,
-           hessian = hessian)
+      list(loglink = loglink*1e+4,
+           fisher = fisher*1e+4,
+           gradient  = gradient*1e+4,
+           hessian = hessian*1e+4)
     )
   }
 
- Bernoulli(dat,rep(0,11))
+ Bernoulli(dat,rep(1,11))
 # Bernoulli(dat,ans$coefficients[-1] %>% as.vector())
 ```
 ## 3.2
@@ -444,7 +443,56 @@ tibble(
 ## 3.2
 
 ```{r lasso}
+lasso_update_fit =
+  function(fun, data, theta_vec,lambda,... ) {
+    iter = 0
+    soft_threshold =
+      function(beta, lambda)
+        (abs(beta) > lambda) * (beta - sign(beta) * lambda)
+    
+    cur_result = fun(data, theta_vec)$loglink
+    
+    prev_result = -Inf
+    
+    result = tibble()
+    
+    while (abs(cur_result - prev_result) > tol && iter < maxiter) {
+      iter = iter + 1
+      
+      for (i in 2:theta_vec) {
+        #coordinate update
+        theta_old = theta_vec[[i]]
+        gradient_i = fun(data, theta_vec)$gradient[[i]]
+        hessian_i = fun(data, theta_vec)$hessian[i, i]
+        H_i = solve(hessian_i)
+        theta_new = theta_old - H_i %*% gradient_i
+        theta_vec[[i]] = soft_threshold(theta_new, lambda)
+      }
+      result = rbind(result,
+                     tibble(
+                       iteration = iter,
+                       result = list(theta_vec),
+                       L1 = fun(data, tehta_vec)$loglink
+                     ))
+    }
+    return(list(theta = theta_vec, result = result)
+  }
 
+lasso_update = function(fun, data, theta_vec,
+                        lambda = exp(seq(10, to = -10, 10)), ...) {
+  lambda = lambda %>% as.vector()
+  result = tibble()
+  for (lambda_i in lambda) {
+    result = rbind(result,
+                   tibble(
+                     lamdba = lambda_i,
+                     result = lasso_update_fit(fun, data, theta_vec, lambda)
+                   ))
+  }
+  return(result)
+}
+
+lasso_update_fit(Bernoulli,data,theta_vec,lambda = 1)
 ```
 
 
