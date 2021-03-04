@@ -138,7 +138,7 @@ to ensure ascent directions and monotone-increasing properties.
 # Answer: your answer starts here...
 
 ## 2.1
-```{python}
+```{python eval =F}
 print("hello world")
 ```
 
@@ -242,7 +242,7 @@ newton_update =
       } else{
         hessian = fun(data, previous_theta)$hessian
         H = solve(hessian)
-        while (t(gradient) %*% H %*% gradient > 0) {# eigen decomposition
+        while (-t(gradient) %*% H %*% gradient < 0) {# eigen decomposition
           P = eigen(hessian)
           lambda = max(P$values)
           hessian =
@@ -345,6 +345,8 @@ Y = breast$diagnosis
 
 X = model.matrix(diagnosis~.,breast)[,-1]
 
+X = X = cbind((rep(1,length(Y))),X)
+
 dat = list(y = Y, x = X)
 
 ans = glm(Y~X,family = binomial())
@@ -390,9 +392,9 @@ $$p = \frac{exp(X\beta)}{1+exp(X\beta)}$$
 the log-likelihood of Bernoulli is 
 $$l(Y;\beta) = \sum\{y*log(\frac{p}{1-p})+log(1-p)\}=\sum\{y*X^T\beta-log({1+exp(X^T\beta)})\}$$
 The gradient is
-$$\nabla l(Y;\beta) = (\frac{\partial}{\partial \beta_i}l(Y;\beta))=(\sum(y*\beta_i - \frac{\beta_i exp(X^T\beta)}{1+exp(X^T\beta)})$$
+$$\nabla l(Y;\beta) = (\frac{\partial}{\partial \beta_i}l(Y;\beta))=(\sum(y*x_i - \frac{x_i exp(X^T\beta)}{1+exp(X^T\beta)})$$
 and the hessian is 
-$$\nabla^2 l(Y;\beta)=(\sum \frac{\partial\beta_iy}{\partial\beta_j} +\frac{\beta_i*\beta_j*exp(X^T\beta)}{(1+exp(X^T\beta)^2)})$$
+$$\nabla^2 l(Y;\beta)=(\sum  -\frac{x_i*x_j*exp(X^T\beta)}{(1+exp(X^T\beta)^2)})$$
 
 ```{r i_dont_know}
 Bernoulli = 
@@ -405,18 +407,18 @@ Bernoulli =
     
     fisher = var(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
     
-    gradient = c(theta_vec*sum(Y-exp(X%*%theta_vec)/(1+exp(X%*%theta_vec))))
+    gradient = map(1:length(theta_vec),
+                   ~ sum(Y * X[, .x] - X[, .x] * exp(X %*% theta_vec) /
+                           (1 + exp(X %*% theta_vec)))) %>% unlist()
     
     hessian =
-      expand.grid(beta_i = theta_vec,
-                  beta_j = theta_vec) %>% 
-      summarise(beta = beta_i*beta_j,
-                beta = beta * sum(exp(X%*%theta_vec)/(1+exp(X%*%theta_vec))^2)) %>% 
+      expand.grid(i = seq(1,length(theta_vec)),
+                  j = seq(1,length(theta_vec))) %>% 
+      summarise(beta = map2(i,j,~sum(-X[,.x]*X[,.y]*exp(X%*%theta_vec)/(1+exp(X%*%theta_vec))^2))) %>%
+      unnest(beta) %>% 
       pull(beta)
     
     hessian = matrix(hessian,ncol = length(theta_vec))
-    
-    hessian = hessian + diag(theta_vec*sum(Y))
                  
     return(
       list(loglink = loglink,
@@ -426,13 +428,23 @@ Bernoulli =
     )
   }
 
- Bernoulli(dat,rep(-2,10))$hessian %>% solve()
+ Bernoulli(dat,rep(0,11))
 # Bernoulli(dat,ans$coefficients[-1] %>% as.vector())
 ```
 ## 3.2
 
 ```{r}
-r = 
-  naive_newton(Bernoulli,init_theta = seq(-10,to = -1),data = dat)
+tibble(
+  beta_hat = naive_newton(Bernoulli, init_theta = rep(0, 11), data = dat)$theta,
+  beta = glm(diagnosis ~ ., data = breast, family = binomial())$coefficient %>% as.vector()
+) %>% 
+  knitr::kable()
 ```
+
+## 3.2
+
+```{r lasso}
+
+```
+
 
