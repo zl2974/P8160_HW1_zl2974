@@ -5,14 +5,14 @@ output: pdf_document #html_document
 ---
 
 ```{r setup, include=FALSE}
-library(reticulate)
-library(tidyverse)
-knitr::opts_chunk$set(echo = TRUE,eval = T)
 require(survival)
 require(quantreg)
 require(glmnet)
 require(MASS)
 require(pROC)
+library(reticulate)
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE,eval = T)
 
 set.seed(2021)
 ```
@@ -334,6 +334,21 @@ tibble(
 
 
 ## Problem 3: 
+```{r echo = F}
+breast = 
+  read_csv("./breast-cancer.csv") %>% 
+  janitor::clean_names() %>% 
+  select(diagnosis:fractal_dimension_mean) %>% 
+  mutate(diagnosis = forcats::fct_relevel(diagnosis,"M"))
+
+Y = breast$diagnosis
+
+X = model.matrix(diagnosis~.,breast)[,-1]
+
+dat = list(y = Y, x = X)
+
+ans = glm(Y~X,family = binomial())
+```
 
 
 The data \textit{breast-cancer.csv} have 569 row and 33 columns. The first column \textbf{ID} lables individual breast tissue images; The second column \textbf{Diagnonsis} indentifies if the image is coming from cancer tissue or benign cases (M=malignant, B = benign). There are 357  benign and 212  malignant cases. The other 30 columns correspond to mean, standard deviation and the largest values (points on the tails) of the distributions of the following 10 features computed for the cellnuclei;
@@ -363,8 +378,61 @@ The goal  is to build a predictive model based on logistic regression to facilit
 \item Write a report to summarize your findings.
 \end{enumerate}
 
-```{r }
+# 3
 
+## 3.1
+
+the data is a binomial outcome response, which follows a Bernoulli distribution,
+Using logit link, which 
+$$log(\frac{p}{1-p}) = X^T\beta$$
+s.t 
+$$p = \frac{exp(X\beta)}{1+exp(X\beta)}$$
+the log-likelihood of Bernoulli is 
+$$l(Y;\beta) = \sum\{y*log(\frac{p}{1-p})+log(1-p)\}=\sum\{y*X^T\beta-log({1+exp(X^T\beta)})\}$$
+The gradient is
+$$\nabla l(Y;\beta) = (\frac{\partial}{\partial \beta_i}l(Y;\beta))=(\sum(y*\beta_i - \frac{\beta_i exp(X^T\beta)}{1+exp(X^T\beta)})$$
+and the hessian is 
+$$\nabla^2 l(Y;\beta)=(\sum \frac{\partial\beta_iy}{\partial\beta_j} +\frac{\beta_i*\beta_j*exp(X^T\beta)}{(1+exp(X^T\beta)^2)})$$
+
+```{r i_dont_know}
+Bernoulli = 
+  function(data,
+           theta_vec){
+    Y = data$y %>% as.numeric()
+    Y = Y-1
+    X = data$x
+    loglink = sum(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
+    
+    fisher = var(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
+    
+    gradient = c(theta_vec*sum(Y-exp(X%*%theta_vec)/(1+exp(X%*%theta_vec))))
+    
+    hessian =
+      expand.grid(beta_i = theta_vec,
+                  beta_j = theta_vec) %>% 
+      summarise(beta = beta_i*beta_j,
+                beta = beta * sum(exp(X%*%theta_vec)/(1+exp(X%*%theta_vec))^2)) %>% 
+      pull(beta)
+    
+    hessian = matrix(hessian,ncol = length(theta_vec))
+    
+    hessian = hessian + diag(theta_vec*sum(Y))
+                 
+    return(
+      list(loglink = loglink,
+           fisher = fisher,
+           gradient  = gradient,
+           hessian = hessian)
+    )
+  }
+
+ Bernoulli(dat,rep(-2,10))$hessian %>% solve()
+# Bernoulli(dat,ans$coefficients[-1] %>% as.vector())
 ```
+## 3.2
 
+```{r}
+r = 
+  naive_newton(Bernoulli,init_theta = seq(-10,to = -1),data = dat)
+```
 
