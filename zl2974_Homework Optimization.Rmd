@@ -242,11 +242,13 @@ newton_update =
       } else{
         hessian = fun(data, previous_theta)$hessian
         H = solve(hessian)
-        while (-t(gradient) %*% H %*% gradient < 0) {# eigen decomposition
+        while (all(eigen(H)$values > 0)) {# eigen decomposition
           P = eigen(hessian)
           lambda = max(P$values)
           hessian =
-            t(P$vectors) %*% (P$values - (lambda + tol) * diag(length(P$values))) %*% P$vectors
+            P$vectors %*% (diag(P$values) - (lambda + tol) * diag(length(P$values))) %*%
+            solve(P$vectors)
+          
           H = solve(hessian)
         }
       }
