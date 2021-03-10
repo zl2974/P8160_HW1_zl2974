@@ -175,10 +175,8 @@ which is negative defined everywhere.
 
 ```{r poisson}
 Poisson =
-  function(data,
+  function(Y,X,
            theta_vec) {
-    Y = data$y
-    X = data$x
     lambda = exp(t(X) %*% theta_vec)
     loglink = sum(Y * log(lambda) - lambda - log(factorial(Y)))
     
@@ -201,7 +199,7 @@ Poisson =
     ))
   }
 
-Poisson(dat,c(7,2))
+Poisson(Y,X,c(7,2))
 ```
 
 ## 2.3
@@ -222,25 +220,25 @@ where $\eta$ is the step size that ensure $\nabla g(x_{k+1}) > \nabla g(x_k)$
 newton_update =
   function(fun,
            previous_theta,
-           data,
+           y,x,
            step_size = 1,
            optimizer = F,
            backtracking = T,
            tol = 1e-8) {
     #take previous gradient and a updated hessian, return update gradient with
     #backtracking
-    if (abs(fun(data,previous_theta)$loglink) == Inf) stop("Check your log-likelihood")
+    #if (abs(fun(y,x,previous_theta)$loglink) == Inf) stop("Check your log-likelihood")
     trial = 0
     
-    gradient = fun(data,previous_theta)$gradient
+    gradient = fun(y,x,previous_theta)$gradient
     
     if (is.function(optimizer)) {
-      hessian = optimizer(data, fun,) # get H
+      hessian = optimizer(y,x, fun,) # get H
     } else{
       if (is.numeric(optimizer)) {
         H = optimizer # use H
       } else{
-        hessian = fun(data, previous_theta)$hessian
+        hessian = fun(y,x, previous_theta)$hessian
         H = solve(hessian)
         while (all(eigen(H)$values > 0)) {# eigen decomposition
           P = eigen(hessian)
@@ -258,7 +256,7 @@ newton_update =
     cur_theta = previous_theta - step_size * H %*% gradient
     
     #backtracking
-    while (backtracking & fun(data,cur_theta)$loglink - fun(data,previous_theta)$loglink < 0 & trial < 2000) {
+    while (backtracking & fun(y,x,cur_theta)$loglink < fun(y,x,previous_theta)$loglink & trial < 2000) {
       step_size = step_size / 2
       
       trial = trial + 1 # avoild dead loops
@@ -269,7 +267,7 @@ newton_update =
     return(cur_theta)
   }
 
-newton_update(fun = Poisson,previous_theta = c(7,2), data = dat)
+newton_update(fun = Poisson,previous_theta = c(7,2), y=Y,x =X)
 ```
 
 ```{r echo = F, eval = F}
@@ -284,13 +282,13 @@ BFGS = function(theta_1,Y_1,theta_2,Y_2,theta_3,Y_3){
 naive_newton =
   function(fun,
            init_theta = 1,
-           data,
+           y,x,
            tol = 1e-8,
            maxtiter = 2000,
            optimizer = F,
            ...) {
     
-    f = fun(data,init_theta)
+    f = fun(y,x,init_theta)
     
     if (any(is.null(f$loglink),
             is.null(f$gradient),
@@ -305,12 +303,12 @@ naive_newton =
     
     prevlog = -Inf # \nabla g(x_{k})
     
-    while (abs(f$loglink - prevlog) > tol && i < maxtiter) {
+    while (any(abs(f$loglink)==Inf,abs(f$loglink - prevlog) > tol) && i < maxtiter) {
       i = i + 1
       prev_theta = cur_theta
       prevlog = f$loglink
-      cur_theta = newton_update(fun, prev_theta,data)
-      f = fun(data,cur_theta)
+      cur_theta = newton_update(fun, prev_theta,y,x)
+      f = fun(y,x,cur_theta)
       result =
         rbind(result, tibble(
           iter = i,
@@ -323,7 +321,7 @@ naive_newton =
 ```
 
 ```{r}
-Beta_hat = naive_newton(Poisson,init_theta = c(7,2),data = dat)$theta
+Beta_hat = naive_newton(Poisson,init_theta = c(7,2),Y,X)$theta
 
 tibble(
   term = c("alpha", "beta"),
@@ -346,10 +344,6 @@ breast =
 Y = breast$diagnosis
 
 X = model.matrix(diagnosis~.,breast)[,-1]
-
-dat = list(y = Y, x = X)
-
-ans = glm(Y~X,family = binomial())
 ```
 
 
@@ -398,15 +392,21 @@ $$\nabla^2 l(Y;\beta)=(\sum  -\frac{x_i*x_j*exp(X^T\beta)}{(1+exp(X^T\beta)^2)})
 
 ```{r i_dont_know}
 Bernoulli = 
-  function(data,
+  function(y,x,
            theta_vec){
-    Y = data$y %>% as.numeric()
-    Y = Y-1
-    X = data$x/1e+4
-    X = cbind(rep(1,length(Y)),X)
+    if (length(theta_vec)!=ncol(x)) stop("length of theta_vec must match dim of x")
+    if (is.factor(y)) y = y %>% as.numeric()-1
+    Y = y
+    X = x
     loglink = sum(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
     
+    if (abs(loglink) == Inf){
+     stop("Choose a better starting value")
+    }
+    
     fisher = var(Y * X%*%theta_vec - log(1+exp(X%*%theta_vec)))
+    
+    X = x*1e-0
     
     gradient = map(1:length(theta_vec),
                    ~ sum(Y * X[, .x] - X[, .x] * exp(X %*% theta_vec) /
@@ -422,79 +422,102 @@ Bernoulli =
     hessian = matrix(hessian,ncol = length(theta_vec))
                  
     return(
-      list(loglink = loglink*1e+4,
-           fisher = fisher*1e+4,
-           gradient  = gradient*1e+4,
-           hessian = hessian*1e+4)
+      list(loglink = loglink,
+           fisher = fisher,
+           gradient  = gradient*1e+0,
+           hessian = hessian*1e+0)
     )
   }
 
- Bernoulli(dat,rep(1,11))
+ Bernoulli(Y,X,rep(0,10))
 # Bernoulli(dat,ans$coefficients[-1] %>% as.vector())
 ```
 ## 3.2
 
-```{r}
-tibble(
-  beta_hat = naive_newton(Bernoulli, init_theta = rep(0, 11), data = dat)$theta,
-  beta = glm(diagnosis ~ ., data = breast, family = binomial())$coefficient %>% as.vector()
-) %>% 
-  knitr::kable()
-```
-
-## 3.2
 
 ```{r lasso}
 lasso_update_fit =
-  function(fun, data, theta_vec,lambda,... ) {
+  function(fun, y,x, theta_vec = NaN,lambda = 1,maxiter = 200,tol = 1e-6,... ) {
+    # data preprocessing
+    if (is.factor(y)) y = y %>% as.numeric() -1
+    y = y
+    x = scale(x)
+    xsd = attr(x,"scaled:scale") %>% as.vector()
+    x = cbind(rep(1,length(y)),x) # add alpha
+    xsd = append(1,xsd)
+    # checking if intercept is include
+    beta_0 = mean(y)/(1-mean(y)) %>% log()
+    if (any(is.na(theta_vec))) theta_vec = rep(beta_0,ncol(x))
+    if (length(theta_vec)<ncol(x)) theta_vec = append(beta_0,theta_vec)
+
     iter = 0
-    soft_threshold =
-      function(beta, lambda)
-        (abs(beta) > lambda) * (beta - sign(beta) * lambda)
     
-    cur_result = fun(data, theta_vec)$loglink
+    soft_threshold =
+      function(beta, lambda){
+        beta = (abs(beta) > lambda) * (beta - sign(beta) * lambda) +(abs(beta) < lambda) * 0
+        return(beta)}
+    
+    cur_result = fun(y,x, theta_vec)$loglink
     
     prev_result = -Inf
     
     result = tibble()
-    
-    while (abs(cur_result - prev_result) > tol && iter < maxiter) {
+    while (any(abs(cur_result) == Inf,abs(cur_result - prev_result) > tol) && iter < maxiter) {
+      prev_result = cur_result
       iter = iter + 1
       
-      for (i in 2:theta_vec) {
-        #coordinate update
-        theta_old = theta_vec[[i]]
-        gradient_i = fun(data, theta_vec)$gradient[[i]]
-        hessian_i = fun(data, theta_vec)$hessian[i, i]
+      for (i in 1:length(theta_vec)) {
+        #coordinate update beta not intercept
+        theta_old = theta_vec[i] 
+        cur_f = fun(y,x, theta_vec)
+        cur_result = cur_f$loglink
+        gradient_i = cur_f$gradient[i]
+        hessian_i = cur_f$hessian[i, i]
         H_i = solve(hessian_i)
+        if (H_i>0) H_i = -1
         theta_new = theta_old - H_i %*% gradient_i
-        theta_vec[[i]] = soft_threshold(theta_new, lambda)
+        if (i>1) theta_new = soft_threshold(theta_new, lambda) 
+        # don't penalize intercept
+        theta_vec[[i]] = theta_new
       }
-      result = rbind(result,
-                     tibble(
-                       iteration = iter,
-                       result = list(theta_vec),
-                       L1 = fun(data, tehta_vec)$loglink
-                     ))
+
+     # result = rbind(result,
+     #                tibble(
+     #                  iteration = iter,
+     #                  theta_id = list(1:length(theta_vec)),
+     #                  theta = list(theta_vec*xsd),
+     #                  L1 = fun(y,x, theta_vec)$loglink
+     #                ))
     }
-    return(list(theta = theta_vec, result = result)
+    return(list(theta = theta_vec/xsd, result = result))
   }
 
-lasso_update = function(fun, data, theta_vec,
-                        lambda = exp(seq(10, to = -10, 10)), ...) {
+lasso_update = function(fun, y,x, theta_vec = NaN,
+                        lambda = exp(seq(from = 5, to = -10)), ...) {
   lambda = lambda %>% as.vector()
   result = tibble()
   for (lambda_i in lambda) {
     result = rbind(result,
                    tibble(
                      lamdba = lambda_i,
-                     result = lasso_update_fit(fun, data, theta_vec, lambda)
+                     result = lasso_update_fit(fun, y, x, theta_vec = theta_vec, lambda = lambda_i)
                    ))
   }
   return(result)
 }
 
-lasso_update_fit(Bernoulli,data,theta_vec,lambda = 1)
+
+b = glmnet(X,Y,family="binomial",lambda = 0.1)
+
+tibble(
+  newton = naive_newton(Bernoulli, init_theta = rep(0, 11), Y, cbind(rep(1, length(
+    Y
+  )), X))$theta,
+  lasso = lasso_update_fit(Bernoulli,Y,X,lambda = 0.5)$theta,
+  glmnet = coef(b) %>% as.vector(),
+  glm = glm(diagnosis ~ ., data = breast, family = binomial())$coefficient %>% as.vector()
+) %>%
+  knitr::kable()
 ```
 
 
