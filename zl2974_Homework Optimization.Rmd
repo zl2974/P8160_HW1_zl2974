@@ -526,8 +526,7 @@ tibble(
   knitr::kable()
 ```
 
-
-```{r quadratic_lasso}
+```{r family_function}
 qfun =
       function(y, x, theta_vec) {
         p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) # 1 * col matrix
@@ -557,6 +556,11 @@ gfun = function(y,x,theta_vec){
   )
 }
 
+
+```
+
+
+```{r quadratic_lasso}
 Qlasso =
   function(y,
            x,
@@ -579,11 +583,7 @@ Qlasso =
     
     #update part
     iter = 0
-    
-    # quadratic function
-    
-    
-    
+
     cur_result = update_fun(y, x, theta_vec)$loglink
     
     if (abs(cur_result) == Inf|is.na(cur_result))
