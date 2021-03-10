@@ -541,7 +541,6 @@ Qlasso =
     # Manually choosing starting value
     theta_vec = rep(0, ncol(x))
     
-    
     #update part
     iter = 0
     
@@ -549,14 +548,13 @@ Qlasso =
     
     qfun =
       function(y, x, theta_vec) {
-        loglink = -sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
-        
         p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) # 1 * col matrix
         
         w_prev = p_prev * (1 - p_prev) # 1 * col matrix
         
         z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
         
+        loglink = -sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
         #gradient
         gradient_prev =
           map(1:ncol(x),
@@ -567,9 +565,12 @@ Qlasso =
         hessian_prev =
           expand.grid(i = 1:ncol(x),
                       j = 1:ncol(x)) %>%
-          map2(i, j,
-               ~ -sum(w_prev * (x[, .x] * x[, .y])) / length(y)) %>%
-          unlist()
+          summarise(theta =
+                      map2(i, j,
+                           ~ -sum(w_prev * (x[, .x] * x[, .y])) / length(y))) %>%
+          unnest(theta) %>%
+          pull(theta) %>% 
+          matrix(., ncol = ncol(x))
         
         return(
           list(
@@ -583,7 +584,7 @@ Qlasso =
         )
       }
     
-    cur_result = qfun(y, x, theta_vec)
+    cur_result = qfun(y, x, theta_vec)$loglink
     
     if (abs(cur_result) == Inf)
       stop("Diverge at starting value")
@@ -620,15 +621,16 @@ Qlasso =
         theta_vec[[i]] = cur_theta
       }
       
-      cur_result = qfun(y, x, theta_vec)
+      cur_result = qfun(y, x, theta_vec)$loglink
       
     }
     
-    return(theta_vec*xsd)
+    return(theta_vec/xsd)
   }
 
-tibble(a = Qlasso(y,x),
-       b = Qlasso(y,x,1))
+tibble(a = Qlasso(Y,X),
+       b = Qlasso(Y,X,1),
+       c = glm(Y~X,family = binomial())$coefficient)
 
 ```
 
