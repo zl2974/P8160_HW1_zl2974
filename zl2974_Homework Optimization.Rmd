@@ -510,11 +510,12 @@ lasso_update = function(fun, y,x, theta_vec = NaN,
 b = glmnet(X,Y,family="binomial",lambda = 0.1)
 
 tibble(
+  lasso_01lambda = lasso_update_fit(Bernoulli,Y,X,lambda = 0.5)$theta,
+  glmnet = coef(b) %>% as.vector(),
+  lasso_0lambda = lasso_update_fit(Bernoulli,Y,X,lambda = 0)$theta,
   newton = naive_newton(Bernoulli, init_theta = rep(0, 11), Y, cbind(rep(1, length(
     Y
   )), X))$theta,
-  lasso = lasso_update_fit(Bernoulli,Y,X,lambda = 0.5)$theta,
-  glmnet = coef(b) %>% as.vector(),
   glm = glm(diagnosis ~ ., data = breast, family = binomial())$coefficient %>% as.vector()
 ) %>%
   knitr::kable()
@@ -526,7 +527,7 @@ Qlasso =
   function(y,
            x,
            lambda = 0,
-           maxiter = 200,
+           maxiter = 500,
            tol = 1e-6,
            ...) {
     # data preparation
@@ -628,9 +629,11 @@ Qlasso =
     return(theta_vec/xsd)
   }
 
-tibble(a = Qlasso(Y,X),
-       b = Qlasso(Y,X,1),
-       c = glm(Y~X,family = binomial())$coefficient)
+tibble(glm = glm(Y~X,family = binomial())$coefficient,
+       Qlasso_0lambda = Qlasso(Y,X),
+       Qlasso_01lambda = Qlasso(Y,X,0.1),
+       glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda = 0.1)) %>% as.vector()
+       )
 
 ```
 
