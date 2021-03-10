@@ -521,3 +521,114 @@ tibble(
 ```
 
 
+```{r quadratic_lasso}
+Qlasso =
+  function(y,
+           x,
+           lambda = 0,
+           maxiter = 200,
+           tol = 1e-6,
+           ...) {
+    # data preparation
+    if (is.factor(y))
+      y = y %>% as.numeric() - 1
+    y = y
+    x = scale(x)
+    xsd = attr(x, "scaled:scale") %>% as.vector()
+    x = cbind(rep(1, length(y)), x) # add alpha
+    xsd = append(1, xsd)
+    
+    # Manually choosing starting value
+    theta_vec = rep(0, ncol(x))
+    
+    
+    #update part
+    iter = 0
+    
+    # quadratic function
+    
+    qfun =
+      function(y, x, theta_vec) {
+        loglink = -sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
+        
+        p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) # 1 * col matrix
+        
+        w_prev = p_prev * (1 - p_prev) # 1 * col matrix
+        
+        z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
+        
+        #gradient
+        gradient_prev =
+          map(1:ncol(x),
+              ~ sum(w_prev * (z_prev - x %*% theta_vec) * x[, .x]) / length(y)) %>%
+          unlist()# col * 1 data
+        
+        # Hessian
+        hessian_prev =
+          expand.grid(i = 1:ncol(x),
+                      j = 1:ncol(x)) %>%
+          map2(i, j,
+               ~ -sum(w_prev * (x[, .x] * x[, .y])) / length(y)) %>%
+          unlist()
+        
+        return(
+          list(
+            loglink = loglink,
+            p = p_prev,
+            w = w_prev,
+            z = z_prev,
+            gradient = gradient_prev,
+            hessian = hessian_prev
+          )
+        )
+      }
+    
+    cur_result = qfun(y, x, theta_vec)
+    
+    if (abs(cur_result) == Inf)
+      stop("Diverge at starting value")
+    
+    prev_result = -Inf
+    
+    while (abs(cur_result - prev_result) > tol
+           && iter < maxiter) {
+      iter = iter + 1
+      
+      prev_result = cur_result
+      
+      for (i in 1:length(theta_vec)) {
+        #weight
+        fun_prev = qfun(y, x, theta_vec)
+        p_prev = fun_prev$p
+        z_prev = fun_prev$z
+        w_prev = fun_prev$w
+        gradient_prev = fun_prev$gradient
+        hessian_prev = fun_prev$hessian
+        H_prev = solve(hessian_prev[i, i])
+        
+        #update
+        cur_theta =
+          theta_vec[[i]] - H_prev * gradient_prev[[i]]
+        
+        #soft-threshod,skip penalize intercept
+        if (i > 1)
+          cur_theta =
+          (abs(cur_theta) > lambda) * (cur_theta - sign(cur_theta) * lambda) +
+          (abs(cur_theta) < lambda) * 0
+        
+        #update theta
+        theta_vec[[i]] = cur_theta
+      }
+      
+      cur_result = qfun(y, x, theta_vec)
+      
+    }
+    
+    return(theta_vec*xsd)
+  }
+
+tibble(a = Qlasso(y,x),
+       b = Qlasso(y,x,1))
+
+```
+
