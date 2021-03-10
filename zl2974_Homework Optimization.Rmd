@@ -433,9 +433,19 @@ Bernoulli =
 # Bernoulli(dat,ans$coefficients[-1] %>% as.vector())
 ```
 ## 3.2
+```{r}
+soft_threshold =
+  function(beta, lambda) {
+    if (abs(beta)>lambda){
+      if (beta >0) return(beta - lambda)
+      return(beta +lambda)
+    }
+    return(0)
+    }
+```
 
 
-```{r lasso}
+```{r lasso,echo=F,eval=F}
 lasso_update_fit =
   function(fun, y,x, theta_vec = NaN,lambda = 1,maxiter = 200,tol = 1e-6,... ) {
     # data preprocessing
@@ -451,11 +461,6 @@ lasso_update_fit =
     if (length(theta_vec)<ncol(x)) theta_vec = append(beta_0,theta_vec)
 
     iter = 0
-    
-    soft_threshold =
-      function(beta, lambda){
-        beta = (abs(beta) > lambda) * (beta - sign(beta) * lambda) +(abs(beta) < lambda) * 0
-        return(beta)}
     
     cur_result = fun(y,x, theta_vec)$loglink
     
@@ -523,7 +528,7 @@ tibble(
 
 
 ```{r quadratic_lasso}
-Qlasso =
+Qlasso_logistic =
   function(y,
            x,
            lambda = 0,
@@ -557,37 +562,37 @@ Qlasso =
         
         loglink = -sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
         #gradient
-        gradient_prev =
-          map(1:ncol(x),
-              ~ sum(w_prev * (z_prev - x %*% theta_vec) * x[, .x]) / length(y)) %>%
-          unlist()# col * 1 data
+        #gradient_prev =
+        #  map(1:ncol(x),
+        #      ~ sum(w_prev * (z_prev - x %*% theta_vec) * x[, .x]) / length(y)) %>%#
+        #  unlist()# col * 1 data
         
         # Hessian
-        hessian_prev =
-          expand.grid(i = 1:ncol(x),
-                      j = 1:ncol(x)) %>%
-          summarise(theta =
-                      map2(i, j,
-                           ~ -sum(w_prev * (x[, .x] * x[, .y])) / length(y))) %>%
-          unnest(theta) %>%
-          pull(theta) %>% 
-          matrix(., ncol = ncol(x))
+        #hessian_prev =
+        #  expand.grid(i = 1:ncol(x),
+        #              j = 1:ncol(x)) %>%
+        #  summarise(theta =
+        #              map2(i, j,
+        #                   ~ -sum(w_prev * (x[, .x] * x[, .y])) / length(y))) %>%#
+        #  unnest(theta) %>%
+        #  pull(theta) %>% 
+        #  matrix(., ncol = ncol(x))
         
         return(
           list(
             loglink = loglink,
             p = p_prev,
             w = w_prev,
-            z = z_prev,
-            gradient = gradient_prev,
-            hessian = hessian_prev
+            z = z_prev#,
+            #gradient = gradient_prev,
+            #hessian = hessian_prev
           )
         )
       }
     
     cur_result = qfun(y, x, theta_vec)$loglink
     
-    if (abs(cur_result) == Inf)
+    if (abs(cur_result) == Inf|is.na(cur_result))
       stop("Diverge at starting value")
     
     prev_result = -Inf
@@ -604,34 +609,35 @@ Qlasso =
         p_prev = fun_prev$p
         z_prev = fun_prev$z
         w_prev = fun_prev$w
-        gradient_prev = fun_prev$gradient
-        hessian_prev = fun_prev$hessian
-        H_prev = solve(hessian_prev[i, i])
+        #gradient_prev = fun_prev$gradient
+        #hessian_prev = fun_prev$hessian
+        #H_prev = solve(hessian_prev[i, i])
         
         #update
         cur_theta =
-          theta_vec[[i]] - H_prev * gradient_prev[[i]]
+          #theta_vec[[i]] - H_prev * gradient_prev[[i]]
+          sum((z_prev-x[,-i]%*%theta_vec[-i])*x[,i]*w_prev)
         
         #soft-threshod,skip penalize intercept
-        if (i > 1)
+        #if (i > 1)
           cur_theta =
-          (abs(cur_theta) > lambda) * (cur_theta - sign(cur_theta) * lambda) +
-          (abs(cur_theta) < lambda) * 0
+            soft_threshold(cur_theta,
+                           lambda
+                           )/sum(w_prev*(x[,i]^2))
         
         #update theta
         theta_vec[[i]] = cur_theta
       }
       
       cur_result = qfun(y, x, theta_vec)$loglink
-      
     }
-    
     return(theta_vec/xsd)
   }
 
 tibble(glm = glm(Y~X,family = binomial())$coefficient,
-       Qlasso_0lambda = Qlasso(Y,X),
-       Qlasso_01lambda = Qlasso(Y,X,0.1),
+       glmnet_0lambda = coef(glmnet(X,Y,"binomial",lambda = 0)) %>% as.vector(),
+       Qlasso_0lambda = Qlasso_logistic(Y,X),
+       Qlasso_01lambda = Qlasso_logistic(Y,X,0.1),
        glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda = 0.1)) %>% as.vector()
        )
 
