@@ -564,7 +564,7 @@ gfun = function(y,x,theta_vec){
 Qlasso =
   function(y,
            x,
-           update_fun,
+           family_fun,
            lambda = 0,
            maxiter = 500,
            tol = 1e-6,
@@ -584,7 +584,7 @@ Qlasso =
     #update part
     iter = 0
 
-    cur_result = update_fun(y, x, theta_vec)$loglink
+    cur_result = family_fun(y, x, theta_vec)$loglink
     
     if (abs(cur_result) == Inf|is.na(cur_result))
       stop("Diverge at starting value")
@@ -599,7 +599,7 @@ Qlasso =
       
       for (i in 1:length(theta_vec)) {
         #weight
-        fun_prev = update_fun(y, x, theta_vec)
+        fun_prev = family_fun(y, x, theta_vec)
         z_prev = fun_prev$z # working response
         w_prev = fun_prev$w # weight
         
@@ -616,7 +616,7 @@ Qlasso =
         theta_vec[[i]] = cur_theta
       }
       
-      cur_result = update_fun(y, x, theta_vec)$loglink
+      cur_result = family_fun(y, x, theta_vec)$loglink
     }
     return(theta_vec/xsd)
   }
