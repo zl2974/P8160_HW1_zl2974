@@ -618,13 +618,15 @@ Qlasso =
       
       cur_result = family_fun(y, x, theta_vec)$loglink
     }
-    return(theta_vec/xsd)
+    return(list(
+      coefficient = theta_vec/xsd,
+      loglikelihood = cur_result))
   }
 
 tibble(glm = glm(Y~X,family = binomial())$coefficient,
        glmnet_0lambda = coef(glmnet(X,Y,"binomial",lambda = 0)) %>% as.vector(),
-       Qlasso_0lambda = Qlasso(Y,X,qfun),
-       Qlasso_01lambda = Qlasso(Y,X,qfun,0.1),
+       Qlasso_0lambda = Qlasso(Y,X,qfun)$coefficient,
+       Qlasso_01lambda = Qlasso(Y,X,qfun,0.1)$coefficient,
        glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda = 0.1)) %>% as.vector()
        )
 
