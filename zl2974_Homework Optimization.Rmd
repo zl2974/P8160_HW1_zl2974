@@ -621,10 +621,21 @@ Qlasso =
     return(theta_vec/xsd)
   }
 
+X_g = MASS::mvrnorm(100,rep(0,10),diag(10))
+Beta = runif(10,0,10)
+Y_g = X_g%*%Beta  + rnorm(100)
+
+tibble(glm = glm(Y_g~X_g)$coefficient,
+       glmnet_0lambda = coef(glmnet(X_g,Y_g,lambda = 0)) %>% as.vector(),
+       Qlasso_0lambda = Qlasso(Y_g,X_g,gfun),
+       Qlasso_01lambda = Qlasso(Y_g,X_g,gfun,1),
+       glmnet_01lambda = coef(glmnet(X_g,Y_g,lambda = 1)) %>% as.vector()
+       )
+
 tibble(glm = glm(Y~X,family = binomial())$coefficient,
        glmnet_0lambda = coef(glmnet(X,Y,"binomial",lambda = 0)) %>% as.vector(),
        Qlasso_0lambda = Qlasso(Y,X,qfun),
-       Qlasso_01lambda = Qlasso(Y,X,qfun,0.1),
+       Qlasso_01lambda = Qlasso(Y,X,qfun,3),
        glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda = 0.1)) %>% as.vector()
        )
 
