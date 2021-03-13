@@ -12,7 +12,27 @@ require(MASS)
 require(pROC)
 library(reticulate)
 library(tidyverse)
-knitr::opts_chunk$set(echo = TRUE,eval = T)
+knitr::opts_chunk$set(
+  fig.height = 6,
+  fig.width = 8,
+  message = F,
+  echo = T,
+  warning = F,
+  cache = T
+)
+theme_set(theme_minimal() + theme(
+  legend.position = "bottom",
+  plot.title = element_text(hjust = 0.5)
+))
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis",
+  digits = 3
+)
+
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
 
 set.seed(2021)
 ```
@@ -344,6 +364,10 @@ breast =
 Y = breast$diagnosis
 
 X = model.matrix(diagnosis~.,breast)[,-1]
+
+X_g = MASS::mvrnorm(100,rep(0,10),diag(10))
+Beta = runif(10,0,10)
+Y_g = X_g%*%Beta  + rnorm(100)
 ```
 
 
@@ -527,30 +551,31 @@ tibble(
 ```
 
 ```{r family_function}
-qfun =
-      function(y, x, theta_vec) {
-        p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) # 1 * col matrix
-        
-        w_prev = p_prev * (1 - p_prev) # 1 * col matrix
-        
-        z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
-        
-        loglink = -sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
-        
-        return(
-          list(
-            loglink = loglink,
-            p = p_prev,
-            w = w_prev,
-            z = z_prev
-          )
-        )
-      }
+bfun =
+  function(y, x, theta_vec) {
+    if (is.factor(y))
+      y = y %>% as.numeric() - 1
+    p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) #  row matrix
+    
+    w_prev = p_prev * (1 - p_prev) # row matrix
+    
+    z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
+    
+    loglink = #sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
+      -sum(y * x%*%theta_vec - log(1+exp(x%*%theta_vec)))
+    
+    return(list(
+      loglink = loglink,
+      p = p_prev,
+      w = w_prev,
+      z = z_prev
+    ))
+  }
 
 gfun = function(y,x,theta_vec){
   z = y
   w = rep(1/length(y),length(y))
-  loglink = -sum(w *(y - x %*% theta_vec) ^ 2) / (2 * length(y))
+  loglink = sum(w *(y - x %*% theta_vec) ^ 2) / 2
   return(
     list(z=z,w=w,loglink=loglink)
   )
@@ -566,8 +591,10 @@ Qlasso =
            x,
            family_fun,
            lambda = 0,
+           theta_vec = NA,
            maxiter = 500,
            tol = 1e-6,
+           intercept = T,
            ...) {
     # data preparation
     if (is.factor(y))
@@ -575,11 +602,17 @@ Qlasso =
     y = y
     x = scale(x)
     xsd = attr(x, "scaled:scale") %>% as.vector()
-    x = cbind(rep(1, length(y)), x) # add alpha
-    xsd = append(1, xsd)
+    if (intercept) {
+      x = cbind(rep(1, length(y)), x) # add alpha
+      xsd = append(1, xsd)
+    }
     
     # Manually choosing starting value
-    theta_vec = rep(0, ncol(x))
+    if (!is.na(theta_vec)) {
+      if (length(theta_vec) != ncol(x))
+        theta_vec = append(rep(0, ncol(x) - length(theta_vec)), theta_vec)
+    } else
+      theta_vec = rep(0, ncol(x))
     
     #update part
     iter = 0
@@ -608,27 +641,148 @@ Qlasso =
           sum((z_prev-x[,-i]%*%theta_vec[-i])*x[,i]*w_prev)
         
         #soft-threshod
+        if (i > 1){
         cur_theta =
           soft_threshold(cur_theta,
                          lambda) / sum(w_prev * (x[, i] ^ 2))
+        } else cur_theta = cur_theta/sum(w_prev * (x[, i] ^ 2))
         
         #update theta
         theta_vec[[i]] = cur_theta
       }
       
-      cur_result = family_fun(y, x, theta_vec)$loglink
+      cur_result = family_fun(y, x, theta_vec)$loglink + lambda*sum(abs(theta_vec))
     }
     return(list(
       coefficient = theta_vec/xsd,
       loglikelihood = cur_result))
   }
+```
+
+```{r cv_function}
+cv_Qlasso = 
+  function(y,x,family_fun,lambda=NA,number = 5,intercept = T){
+    result = tibble()
+    lambda = as.vector(lambda)
+    if (all(is.na(lambda))) {
+      Y = y
+      if (is.factor(y)) Y = y %>% as.numeric()-1
+      Y = as.vector(Y)
+      max_lambda = length(Y)*max(colSums(diag(Y) %*% scale(x)))
+      lambda = exp(seq(log(max_lambda),-10,length=20))
+    }
+    block_length = length(y)/number
+    for (lam in lambda) {
+      for (i in 1:number) {
+        #create training partition
+        test_index = (1 + (number-1)*block_length):(number*block_length)
+        trainX = x[-test_index,]
+        testX = x[test_index,]
+        trainY = y[-test_index]
+        testY = y[test_index]
+        
+        #train
+        trainF = Qlasso(trainY,trainX,family_fun,lambda = lam,intercept = intercept)
+        if (intercept) {prev_coef = trainF$coefficient[-1]
+        }else {prev_coef = trainF$coefficient}
+        #test
+        testF = family_fun(testY,testX,prev_coef)
+        result = 
+          result %>% 
+          rbind(expand.grid(coefficient = trainF$coefficient,
+                            lambda = lam,
+                            loglikelihood = testF$logli+ lam*sum(abs(trainF$coefficient))) %>% 
+                  cbind(tibble(term = (1:length(trainF$coefficient))-1) %>% 
+                          mutate_all(as.character))
+                )
+      }
+    }
+    # take the mean of everything
+    result = result %>% 
+      group_by(lambda,term) %>% 
+      summarise(across(c(coefficient,loglikelihood),mean))%>% 
+      arrange((loglikelihood)) %>% 
+      nest(coef = c(coefficient,term))
+    
+    coef = result[1,] %>% 
+      unnest() %>% 
+      pull(coefficient)
+    
+    lambda = result[1,"lambda"] %>% as.numeric()
+    
+    loglikelihood = result[1,"loglikelihood"] %>% as.numeric()
+    
+    return(list(
+      coefficient = coef,
+      loglikelihood = loglikelihood,
+      lambda = lambda,
+      cvtable = result
+    ))
+  }
+```
+
+
+```{r testing_1}
+tibble(glm = glm(Y_g~X_g)$coefficient,
+       glmnet_0lambda = coef(glmnet(X_g,Y_g,lambda = 0)) %>% as.vector(),
+       Qlasso_0lambda = Qlasso(Y_g,X_g,gfun)$coefficient,
+       Qlasso_01lambda = Qlasso(Y_g,X_g,gfun,5)$coefficient,
+       glmnet_01lambda = coef(glmnet(X_g,Y_g,lambda = 5)) %>% as.vector()
+       ) %>% 
+  knitr::kable(caption = "Function comparison at Gaussian Family")
 
 tibble(glm = glm(Y~X,family = binomial())$coefficient,
        glmnet_0lambda = coef(glmnet(X,Y,"binomial",lambda = 0)) %>% as.vector(),
-       Qlasso_0lambda = Qlasso(Y,X,qfun)$coefficient,
-       Qlasso_01lambda = Qlasso(Y,X,qfun,0.1)$coefficient,
-       glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda = 0.1)) %>% as.vector()
-       )
-
+       Qlasso_0lambda = Qlasso(Y,X,bfun)$coefficient,
+       Qlasso_01lambda = Qlasso(Y,X,bfun,5)$coefficient,
+       glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda =1)) %>% as.vector()
+       ) %>% 
+  knitr::kable(caption = "Function comparision at binomial family")
 ```
 
+\ From above tables we can see that the `Qlasso` function of mine works reasonably close to `glmnet` except for the intercept terms in the case of Gaussian family. However, the result of binomial family behave rather different with L1 penalties. The function produce similar result with lambda = 0 except for `intercept` and once adding lamdba, the effect of lambda is rather different to `glmnet`.
+
+```{r}
+gaussian_Qlasso = cv_Qlasso(Y_g,X_g,gfun)
+
+gaussian_Qlasso$cvtable %>% 
+  unnest(coef) %>% 
+  filter(term != 0) %>% 
+  ggplot(aes(x = log(lambda), y = coefficient, color = term)) +
+  geom_line() +
+  scale_x_reverse() +
+  labs(title = "Cross validate Qlasso selection at Gaussian Family")
+
+gaussian_glmnet = cv.glmnet(X_g,Y_g)
+
+plotmo::plot_glmnet(gaussian_glmnet$glmnet.fit)
+
+tibble(term = c("intercept",colnames(X_g %>% as_tibble())),
+       Qlasso = gaussian_Qlasso$coef,
+       glmnet = coef(gaussian_glmnet) %>% as.vector()) %>% 
+  knitr::kable(caption = "Gaussian family result")
+```
+
+ Using cross validation we can see that for gaussian, the penalty in the same scale as the `glmnet`, but because of the intercept is different, the optimum model chosen is different. same result(bug) can be observed in the binomial family, but rather deteriorate. The penalty although work similar to `glmnet` in terms of trends, but on a rather different scale. Also, the intercept produce by the function is not even the $log(\frac{\bar{Y}}{1-\bar{Y}})|X=0$, so the objective function failed to aid the function to choose the optimun model. 
+
+
+```{r}
+binomial_Qlasso = cv_Qlasso(Y,X,bfun)
+
+binomial_Qlasso$cvtable %>% 
+  unnest(coef) %>% 
+  filter(term != 0) %>% 
+  ggplot(aes(x = log(lambda), y = coefficient, color = term)) +
+  geom_line() +
+  scale_x_reverse() +
+  labs(title = "Cross validate Qlasso selection at Binomial Family")
+
+binomial_glmnet = cv.glmnet(X,Y,family = "binomial")
+
+plotmo::plot_glmnet(binomial_glmnet$glmnet.fit)
+
+tibble(term = c("intercept",colnames(X)),
+       Qlasso = binomial_Qlasso$coef,
+       glmnet = coef(binomial_glmnet) %>% as.vector()) %>% 
+  knitr::kable(caption = "Binomial family result")
+```
