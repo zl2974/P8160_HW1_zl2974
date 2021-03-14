@@ -562,8 +562,7 @@ bfun =
     z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
     
     loglink = 
-      #sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
-      sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2)
+      sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
     
     return(list(
       loglink = loglink,
@@ -790,4 +789,4 @@ tibble(term = c("intercept",colnames(X)),
 
 ## 3.3
 
-The result from 
+The result from glmnet shows that only radius, texture, smoothness and concave point and symetric
