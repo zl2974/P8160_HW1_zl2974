@@ -648,7 +648,6 @@ Qlasso =
         cur_theta =sum((z_prev - x[, -i] %*% theta_vec[-i]) * x[, i] * w_prev)
         
          #soft-threshold
-        print(str_c(lambda,i,theta_vec))
         if (i > 1) {
           cur_theta =
             soft_threshold(cur_theta,
@@ -797,4 +796,4 @@ tibble(term = c("intercept",colnames(X)),
 
 ## 3.3
 
-The result from glmnet shows that only radius, texture, smoothness and concave point and symetric are included in the model. The based odd is `r exp(coef(binomial_glmnet) %>% as.vector()[0])`, and increase a unit in `radius`, `texture`, `smoothness` and `concave point` and `symetric` will increase the odd of getting cancer`.
+The result from glmnet shows that only radius, texture, smoothness and concave point and symetric are included in the model. The based odd is `r exp(coef(binomial_glmnet) %>% as.vector())[[1]]`, and increase a unit in `radius`, `texture`, `smoothness` and `concave point` and `symetric` will increase the odd of getting cancer`.
