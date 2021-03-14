@@ -359,7 +359,7 @@ breast =
   read_csv("./breast-cancer.csv") %>% 
   janitor::clean_names() %>% 
   select(diagnosis:fractal_dimension_mean) %>% 
-  mutate(diagnosis = forcats::fct_relevel(diagnosis,"M"))
+  mutate(diagnosis = forcats::fct_relevel(diagnosis,"B"))
 
 Y = breast$diagnosis
 
@@ -555,7 +555,9 @@ bfun =
   function(y, x, theta_vec) {
     if (is.factor(y))
       y = y %>% as.numeric() - 1
-    p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) #  row matrix
+    if (exp(x %*% theta_vec)<1e-5){
+      p_prev = exp(x %*% theta_vec) / (1 + 1e-5)
+    } else  p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) #  row matrix
     
     w_prev = p_prev * (1 - p_prev) # row matrix
     
@@ -641,6 +643,7 @@ Qlasso =
             sum((z_prev - x[, -i] %*% theta_vec[-i]) * x[, i] * w_prev)
         
          #soft-threshold
+        print(str_c(lambda,i,theta_vec))
         if (i > 1) {
           cur_theta =
             soft_threshold(cur_theta,
@@ -789,4 +792,4 @@ tibble(term = c("intercept",colnames(X)),
 
 ## 3.3
 
-The result from glmnet shows that only radius, texture, smoothness and concave point and symetric
+The result from glmnet shows that only radius, texture, smoothness and concave point and symetric are included in the model. The based odd is `r exp(coef(binomial_glmnet) %>% as.vector()[0])`, and increase a unit in `radius`, `texture`, `smoothness` and `concave point` and `symetric` will increase the odd of getting cancer`.
