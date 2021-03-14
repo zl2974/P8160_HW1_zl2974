@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
   message = F,
   echo = T,
   warning = F,
-  cache = T
+  cache = F
 )
 theme_set(theme_minimal() + theme(
   legend.position = "bottom",
@@ -561,8 +561,9 @@ bfun =
     
     z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
     
-    loglink = #sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
-      -sum(y * x%*%theta_vec - log(1+exp(x%*%theta_vec)))
+    loglink = 
+      #sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
+      sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2)
     
     return(list(
       loglink = loglink,
@@ -638,24 +639,24 @@ Qlasso =
         
         #update
         cur_theta =
-          sum((z_prev-x[,-i]%*%theta_vec[-i])*x[,i]*w_prev)
+            sum((z_prev - x[, -i] %*% theta_vec[-i]) * x[, i] * w_prev)
         
-        #soft-threshod
-        if (i > 1){
-        cur_theta =
-          soft_threshold(cur_theta,
-                         lambda) / sum(w_prev * (x[, i] ^ 2))
-        } else cur_theta = cur_theta/sum(w_prev * (x[, i] ^ 2))
-        
+         #soft-threshold
+        if (i > 1) {
+          cur_theta =
+            soft_threshold(cur_theta,
+                           lambda) / sum(w_prev * (x[, i] ^ 2))
+        } else {
+          cur_theta = cur_theta / sum(w_prev * (x[, i] ^ 2))
+        }
+       
         #update theta
         theta_vec[[i]] = cur_theta
       }
-      
-      cur_result = family_fun(y, x, theta_vec)$loglink + lambda*sum(abs(theta_vec))
+      cur_result = family_fun(y, x, theta_vec)$loglink + lambda * sum(abs(theta_vec))
     }
-    return(list(
-      coefficient = theta_vec/xsd,
-      loglikelihood = cur_result))
+    return(list(coefficient = theta_vec / xsd,
+                loglikelihood = cur_result))
   }
 ```
 
@@ -734,8 +735,8 @@ tibble(glm = glm(Y_g~X_g)$coefficient,
 tibble(glm = glm(Y~X,family = binomial())$coefficient,
        glmnet_0lambda = coef(glmnet(X,Y,"binomial",lambda = 0)) %>% as.vector(),
        Qlasso_0lambda = Qlasso(Y,X,bfun)$coefficient,
-       Qlasso_01lambda = Qlasso(Y,X,bfun,5)$coefficient,
-       glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda =1)) %>% as.vector()
+       Qlasso_56.9lambda = Qlasso(Y,X,bfun,56.9)$coefficient,
+       glmnet_01lambda = coef(glmnet(X,Y,"binomial",lambda =0.1)) %>% as.vector()
        ) %>% 
   knitr::kable(caption = "Function comparision at binomial family")
 ```
@@ -763,7 +764,7 @@ tibble(term = c("intercept",colnames(X_g %>% as_tibble())),
   knitr::kable(caption = "Gaussian family result")
 ```
 
- Using cross validation we can see that for gaussian, the penalty in the same scale as the `glmnet`, but because of the intercept is different, the optimum model chosen is different. same result(bug) can be observed in the binomial family, but rather deteriorate. The penalty although work similar to `glmnet` in terms of trends, but on a rather different scale. Also, the intercept produce by the function is not even the $log(\frac{\bar{Y}}{1-\bar{Y}})|X=0$, so the objective function failed to aid the function to choose the optimun model. 
+ Using cross validation we can see that for gaussian, the penalty in the same scale as the `glmnet`, but because of the intercept is different, the optimum model chosen is different. same result(bug) can be observed in the binomial family, but rather deteriorate. The penalty although work similar to `glmnet` in terms of trends, but on a rather different scale(sample size). Also, the intercept produce by the function is not even the $log(\frac{\bar{Y}}{1-\bar{Y}})|X=0$, so the objective function failed to aid the function to choose the optimum model. 
 
 
 ```{r}
@@ -772,7 +773,7 @@ binomial_Qlasso = cv_Qlasso(Y,X,bfun)
 binomial_Qlasso$cvtable %>% 
   unnest(coef) %>% 
   filter(term != 0) %>% 
-  ggplot(aes(x = log(lambda), y = coefficient, color = term)) +
+  ggplot(aes(x = log(lambda/length(Y)), y = coefficient, color = term)) +
   geom_line() +
   scale_x_reverse() +
   labs(title = "Cross validate Qlasso selection at Binomial Family")
@@ -786,3 +787,7 @@ tibble(term = c("intercept",colnames(X)),
        glmnet = coef(binomial_glmnet) %>% as.vector()) %>% 
   knitr::kable(caption = "Binomial family result")
 ```
+
+## 3.3
+
+The result from 
