@@ -359,7 +359,10 @@ breast =
   read_csv("./breast-cancer.csv") %>% 
   janitor::clean_names() %>% 
   select(diagnosis:fractal_dimension_mean) %>% 
-  mutate(diagnosis = forcats::fct_relevel(diagnosis,"B"))
+  mutate(diagnosis = case_when(
+    diagnosis == "M"~1,
+    diagnosis != "M" ~0)#forcats::fct_relevel(diagnosis,"M")
+         )
 
 Y = breast$diagnosis
 
@@ -555,11 +558,14 @@ bfun =
   function(y, x, theta_vec) {
     if (is.factor(y))
       y = y %>% as.numeric() - 1
-    if (exp(x %*% theta_vec)<1e-5){
-      p_prev = exp(x %*% theta_vec) / (1 + 1e-5)
-    } else  p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) #  row matrix
+
+    p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) #  row matrix
+
+    p_prev[p_prev<1e-5] = 1e-5
     
     w_prev = p_prev * (1 - p_prev) # row matrix
+    
+    w_prev[w_prev<1e-5] = 1e-5
     
     z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
     
@@ -639,8 +645,7 @@ Qlasso =
         w_prev = fun_prev$w # weight
         
         #update
-        cur_theta =
-            sum((z_prev - x[, -i] %*% theta_vec[-i]) * x[, i] * w_prev)
+        cur_theta =sum((z_prev - x[, -i] %*% theta_vec[-i]) * x[, i] * w_prev)
         
          #soft-threshold
         print(str_c(lambda,i,theta_vec))
