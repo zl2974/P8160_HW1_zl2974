@@ -1,0 +1,77 @@
+---
+title: "Homework 5 on MCMC"
+author: "Leave your name and uni here"
+date: "Due: 04/18/2020, by 11:59pm"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+Derive the posterior distributions in the following settings:
+
+1. Suppose $X_1,...,X_n$ iid sample from $N(\theta, \sigma^2)$ distribution, the prior distribution of $\theta$ is $N(\mu, \tau^2)$, derive the posterior distribtuion of $\theta$ given $\mathbf{X}$:
+
+
+
+2.Suppose $X_1,...,X_n$ iid sample from $U(0, \theta)$ distribution, the prior distribution of $\theta$ is Pareto distribution with pdf
+$$\pi(\theta) = \frac{\alpha \beta^\alpha}{\theta^{\alpha+1}}I\{\theta\ge \beta\}$$ with known $\beta$ and $\alpha$
+
+
+# Answer: your answer starts here...
+
+```{r }
+#R codes:
+```
+
+# Problem 2
+Suppose there are three possible weathers in a day: rain, nice,
+cloudy. The transition probabilities are
+
+rain nice cloudy
+
+rain 0.5 0.5 0.25
+
+nice 0.25 0 0.25
+
+cloudy 0.25 0.5 0.5
+
+where the columns represent the ``origin" and the rows represent the
+``destination" of each step. The initial probabilities of the three states are
+given by (0.5,0, 0.5) for (rain, nice, cloudy). Answer the following questions
+
+
+1.  Compute the probabilities of the three states on the next step of the chain.
+
+2.  Find the stationary distribution of the chain
+
+3.  Write an R algorithm for the realization of the chain and illustrate the
+feature of the chain.
+
+# Answer: your answer starts here...
+
+```{r }
+#R codes:
+```
+
+
+\paragraph{problem 3}
+
+Consider the bivariate density
+$$f(x,y) \propto {n \choose x} y^{x + a - 1}(1- y)^{n-x+b-1} , x=0, 1, \cdots, n, 0\le y \le 1$$
+Complete the following tasks:
+
+1. Write the algorithm of the Gibbs sampler,  implement it in R program, and generate a chain with target joint density $f(x,y)$
+
+2. Use a Metropolis sampler to generate a chain with target joint density $f(x; y)$ and implement in R program.
+
+3. Suppose $n = 30, a = 9, b = 14$, use simulations to compare the performance of the above two methods.
+
+# Answer: your answer starts here...
+
+```{r }
+#R codes:
+```
+

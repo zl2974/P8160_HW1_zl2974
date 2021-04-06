@@ -1,0 +1,83 @@
+---
+title: "Homework on re-sampling methods"
+date: "P8160 Advanced Statistical Computing "
+output: pdf_document #html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(survival)
+require(quantreg)
+require(glmnet)
+require(MASS)
+require(pROC)
+
+set.seed(2021)
+```
+**In this homework, please using parallel computing codes for your implementations.**
+
+## Problem 1: a randomized trial on an eye treatment
+
+An ophthalmologist deisgned a randomized clinical trial to evaluate a new laser treatment in comparison to the traditional one.  The response is visual acuity, measured by the number of letters correctly identified in a standard eye test.  20 patients have both eyes eligible for laser treatment. The ophthalmologist randomized the two laser treatments (new vs traditional) to the two eyes of those patients (i.e. one eye received the new laser treatment and the other receive traditional laser treatment). Another 20 patients had only one suitable eye, so they received one treatment allocated at random.So we have a mixture of paired comparison and two-sample data.
+
+\begin{verbatim}
+> blue <- c(4,69,87,35,39,79,31,79,65,95,68,
+           62,70,80,84,79,66,75,59,77,36,86,
+           39,85,74,72,69,85,85,72)
+> red <-c(62,80,82,83,0,81,28,69,48,90,63,
+        77,0,55,83,85,54,72,58,68,88,83,78,
+        30,58,45,78,64,87,65)
+> acui<-data.frame(str=c(rep(0,20),
+            rep(1,10)),red,blue)
+\end{verbatim}
+
+
+\vskip 20pt
+
+\textbf{Answer the following question:}
+ 
+\begin{enumerate}
+\item[(1)]  The treatment effect of the new laser treatment is defined as $$E(Y\mid \mbox{trt = new}) - E(Y\mid \mbox{trt = traditional}).$$  Estimate the treatment effect using the collected data. 
+\item[(2)] Use bootstrap to construct 95% confidence interval of the treatment effect. Describe your bootstrap procedure, and what is your conclusion from the bootstrap CI?
+\end{enumerate}
+
+
+
+
+
+## Problem 2 (Continue from Homework 3, the breast cancer sutdy): 
+
+
+The data \textit{breast-cancer.csv} have 569 row and 33 columns. The first column \textbf{ID} lables individual breast tissue images; The second column \textbf{Diagnonsis} indentifies if the image is coming from cancer tissue or benign cases (M=malignant, B = benign). There are 357  benign and 212  malignant cases. The other 30 columns correspond to mean, standard deviation and the largest values (points on the tails) of the distributions of the following 10 features computed for the cellnuclei;
+\begin{itemize}
+\item radius (mean of distances from center to points on the perimeter)
+\item texture (standard deviation of gray-scale values)
+\item perimeter
+\item area
+\item smoothness (local variation in radius lengths)
+\item compactness ($perimeter^2/area -1$)
+\item concavity (severity of concave portions of the contour)
+\item concave points (number of concave portions of the contour)
+\item symmetry
+\item fractal dimension ("coastline approximation" - 1)
+\end{itemize}
+
+
+In homework 3, you have developed a path-wise coordinate-wise optimization algorithm for logistic LASSO regressions. Using the algorithm you developed there, complete the following tasks 
+
+
+\begin{enumerate}
+\item Propose and implement a 5-fold cross-validation aglorithm to select the turning parameter in the logistic LASSO regression.  We call the logistic-LASSO with CV-selected $\lambda$ as the "optimal" logistic LASSO
+
+
+\item Using the selected predictors from the  "optimal" logistic LASSO to predict the probability of malignant for each of the images (Note that estimates from logistic-Lasso are biased. You need to re-fit the logistic regression with the selected predictors to estimate the probability.)  How well the predictors classify the images?
+
+\item Using the bootstraping smoothing idea to re-evaluate the probabilities of malignant. How well the new predictors classify the images?
+\end{enumerate}
+
+```{r }
+
+```
+
+
