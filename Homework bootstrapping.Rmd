@@ -100,7 +100,7 @@ X = X[,-high_cor]
 
 Keeping only variables below correlation of 0.8.
 
-```{r }
-
+```{r model_fitting}
+cv_Qlasso(Y,X,bfun)
 ```
 
