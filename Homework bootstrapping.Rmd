@@ -12,6 +12,7 @@ require(quantreg)
 require(glmnet)
 require(MASS)
 require(pROC)
+library(tidyverse)
 
 set.seed(2021)
 ```
@@ -76,8 +77,30 @@ In homework 3, you have developed a path-wise coordinate-wise optimization algor
 \item Using the bootstraping smoothing idea to re-evaluate the probabilities of malignant. How well the new predictors classify the images?
 \end{enumerate}
 
+```{r load_lasso_function,warning=F,message=F}
+source("lasso_function.R")
+
+breast = 
+  read_csv("./breast-cancer.csv") %>% 
+  janitor::clean_names() %>% 
+  select(-id,-x33) %>% 
+  mutate(diagnosis = forcats::fct_relevel(diagnosis,"M")
+         )
+
+Y = breast$diagnosis
+
+X = model.matrix(diagnosis~.,breast)[,-1]
+
+corrplot::corrplot(cor(X))
+
+high_cor = caret::findCorrelation(cor(X),0.8)
+
+X = X[,-high_cor]
+```
+
+Keeping only variables below correlation of 0.8.
+
 ```{r }
 
 ```
-
 
