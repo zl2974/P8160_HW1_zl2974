@@ -8,6 +8,9 @@ output: pdf_document #html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 require(survival)
+library(foreach)
+library(parallel)
+library(doParallel)
 require(quantreg)
 require(glmnet)
 require(MASS)
@@ -22,16 +25,16 @@ set.seed(2021)
 
 An ophthalmologist deisgned a randomized clinical trial to evaluate a new laser treatment in comparison to the traditional one.  The response is visual acuity, measured by the number of letters correctly identified in a standard eye test.  20 patients have both eyes eligible for laser treatment. The ophthalmologist randomized the two laser treatments (new vs traditional) to the two eyes of those patients (i.e. one eye received the new laser treatment and the other receive traditional laser treatment). Another 20 patients had only one suitable eye, so they received one treatment allocated at random.So we have a mixture of paired comparison and two-sample data.
 
-\begin{verbatim}
-> blue <- c(4,69,87,35,39,79,31,79,65,95,68,
+```{r}
+blue <- c(4,69,87,35,39,79,31,79,65,95,68,
            62,70,80,84,79,66,75,59,77,36,86,
            39,85,74,72,69,85,85,72)
-> red <-c(62,80,82,83,0,81,28,69,48,90,63,
+red <-c(62,80,82,83,0,81,28,69,48,90,63,
         77,0,55,83,85,54,72,58,68,88,83,78,
         30,58,45,78,64,87,65)
-> acui<-data.frame(str=c(rep(0,20),
+acui<-data.frame(str=c(rep(0,20),
             rep(1,10)),red,blue)
-\end{verbatim}
+```
 
 
 \vskip 20pt
@@ -43,8 +46,68 @@ An ophthalmologist deisgned a randomized clinical trial to evaluate a new laser 
 \item[(2)] Use bootstrap to construct 95% confidence interval of the treatment effect. Describe your bootstrap procedure, and what is your conclusion from the bootstrap CI?
 \end{enumerate}
 
+### 1
+ $$E(Y\mid \mbox{trt = red}) - E(Y\mid \mbox{trt = blue}).$$ 
+
+```{r}
+mean(red-blue)
+```
+### 2
+
+```{r}
+bootr = 
+  function(data,return_sample = F){
+    bt = sample(data,length(data),replace = T)
+    bt_mean = mean(bt)
+    bt_bias = mean(data) - mean(bt)
+    bt_sd = sd(bt)
+    
+    if(!return_sample) bt = NA
+    
+    return(list(
+      sample = bt,
+      mean = bt_mean,
+      sd = bt_sd,
+      bias = bt_bias
+    ))
+  }
+```
+
+```{r bootstrap}
+#1e+4 bootstrap
+
+cl = makePSOCKcluster(5)
+registerDoParallel(cl)
+
+B = 1e+4
+
+red_bt = foreach(i = 1:B,
+                 .combine = rbind,
+                 .inorder = F) %do% bootr(red)$mean
+
+blue_bt = foreach(i = 1:B,
+                 .combine = rbind,
+                 .inorder = F) %do% bootr(blue)$mean
+
+diff_bt = red_bt - blue_bt
+
+hist(diff_bt)
+
+diff_sd_bt = sqrt(var(diff_bt))
+
+stopCluster(cl)
+```
 
 
+The 95% CI is
+```{r}
+alpha = 0.05
+lower = max(diff_bt[percent_rank(diff_bt)<alpha/2])
+upper = min(diff_bt[percent_rank(diff_bt)>(1-alpha/2)])
+lower_aj = 2*mean(red-blue) -upper
+upper_aj = 2*mean(red-blue) - lower
+```
+`r c(lower_aj,upper_aj)`.Given the bootstrap interval, we see that 0 is within the CI, we cannot reject the Null hypothesis that the interventions have no difference
 
 
 ## Problem 2 (Continue from Homework 3, the breast cancer sutdy): 
