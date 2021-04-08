@@ -78,8 +78,6 @@ In homework 3, you have developed a path-wise coordinate-wise optimization algor
 \end{enumerate}
 
 ```{r load_lasso_function,warning=F,message=F}
-source("lasso_function.R")
-
 breast = 
   read_csv("./breast-cancer.csv") %>% 
   janitor::clean_names() %>% 
@@ -100,7 +98,20 @@ X = X[,-high_cor]
 
 Keeping only variables below correlation of 0.8.
 
+Using predictive error rate as loss function, we tune the lasso logistic as:
+
 ```{r model_fitting}
-cv_Qlasso(Y,X,bfun)
+set.seed(123123)
+source("lasso_function.R")
+
+a = cv_Qlasso(Y,X,bfun,intercept = T,return_scale = T)
+
+a
+
+drop_var = a$coefficient==0
+
+names(breast)[-high_cor][-drop_var]
+
+model = glm(Y~X[,-drop_var],family = binomial())
 ```
 

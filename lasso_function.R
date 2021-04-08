@@ -9,6 +9,32 @@ soft_threshold =
     return(0)
   }
 
+classification = 
+  function(theta_vec,new_x,new_y = NA,...){
+    
+    x = new_x
+    
+    p_prev = exp(x %*% theta_vec) / (1 + exp(x %*% theta_vec)) #  row matrix
+    
+    p_prev[p_prev<1e-4] = 1e-4
+    
+    p_prev[p_prev > 1-1e-4] = 0.999
+    
+    p_prev[p_prev == 0] = 1e-4
+    
+    cl = ifelse(p_prev>0.5,1,0)
+    
+    if (!all(is.na(new_y))) {
+      if (is.factor(new_y))
+        new_y = new_y %>% as.numeric() - 1
+      err = mean(cl != new_y)
+    } else {err = NA}
+    
+    return(list(prob = p_prev,
+                class = cl,
+                error_rate = err))
+  }
+
 
 ## Family Function
 
@@ -32,12 +58,12 @@ bfun =
     
     z_prev = x %*% theta_vec + (y - p_prev) / w_prev # row * 1 matrix
     
-    loglink = 
+    objective = 
       -sum(y * log(p_prev/(1-p_prev))+log(1-p_prev))
       #sum(w_prev * (z_prev - x %*% theta_vec) ^ 2) / (2 * length(y))
     
     return(list(
-      loglink = loglink,
+      objective = objective,
       p = p_prev,
       w = w_prev,
       z = z_prev
@@ -50,9 +76,9 @@ bfun =
 gfun = function(y,x,theta_vec){
   z = y
   w = rep(1/length(y),length(y))
-  loglink = sum(w *(y - x %*% theta_vec) ^ 2) / 2
+  objective = sum(w *(y - x %*% theta_vec) ^ 2) / 2
   return(
-    list(z=z,w=w,loglink=loglink)
+    list(z=z,w=w,objective=objective)
   )
 }
 
@@ -68,6 +94,7 @@ Qlasso =
            maxiter = 500,
            tol = 1e-6,
            intercept = T,
+           return_scale = T,
            ...) {
     # data preparation
     if (is.factor(y))
@@ -90,7 +117,7 @@ Qlasso =
     #update part
     iter = 0
     
-    cur_result = family_fun(y, x, theta_vec)$loglink
+    cur_result = family_fun(y, x, theta_vec)$objective
     
     if (abs(cur_result) == Inf|is.na(cur_result))
       stop("Diverge at starting value")
@@ -113,27 +140,37 @@ Qlasso =
         cur_theta =sum((z_prev - x[, -i] %*% theta_vec[-i]) * x[, i] * w_prev)
         
         #soft-threshold
-        if (i > 1) {
+        if (intercept & i == 1) {
           cur_theta =
-            soft_threshold(cur_theta,
-                           lambda) / sum(w_prev * (x[, i] ^ 2))
+            cur_theta / sum(w_prev * (x[, i] ^ 2))
         } else {
-          cur_theta = cur_theta / sum(w_prev * (x[, i] ^ 2))
+          cur_theta = soft_threshold(cur_theta,
+                                     lambda) / sum(w_prev * (x[, i] ^ 2))
         }
         
         #update theta
         theta_vec[[i]] = cur_theta
       }
-      cur_result = family_fun(y, x, theta_vec)$loglink + lambda * sum(abs(theta_vec))
+      cur_result = 
+        (family_fun(y, x, theta_vec)$objective)/length(y) + lambda * sum(abs(theta_vec))
     }
-    return(list(coefficient = theta_vec / xsd,
-                loglikelihood = cur_result))
+    
+    if (!return_scale) theta_vec = theta_vec / xsd
+    return(list(coefficient =theta_vec,
+                objective = cur_result))
   }
 
 ## Cross validation
 
 cv_Qlasso = 
-  function(y,x,family_fun,lambda=NA,number = 5,intercept = T){
+  function(y,
+           x,
+           family_fun,
+           lambda = NA,
+           number = 5,
+           intercept = T,
+           return_scale = T,
+           obj = "test_error") {
     
     result = tibble()
     
@@ -144,7 +181,7 @@ cv_Qlasso =
       if (is.factor(y)) Y = y %>% as.numeric()-1
       Y = as.vector(Y)
       max_lambda = length(Y)*max(colSums(diag(Y) %*% scale(x)))
-      lambda = exp(seq(log(max_lambda),-10,length=20))
+      lambda = c(0,exp(seq(log(max_lambda),-5,length=20)),1e+3)
     }
     
     block_length = length(y)/number
@@ -155,22 +192,41 @@ cv_Qlasso =
       for (i in 1:number) {
         #create training partition
         trainX = x[-which(test_index==i),]
-        testX = x[which(test_index==i),]
+        
         trainY = y[-which(test_index==i)]
-        testY = y[which(test_index==i)]
         
         #train
-        trainF = Qlasso(trainY,trainX,family_fun,lambda = lam,intercept = intercept)
-        if (intercept) {prev_coef = trainF$coefficient[-1]
-        }else {prev_coef = trainF$coefficient}
+        trainF = Qlasso(trainY,trainX,family_fun,lambda = lam,intercept = intercept,return_scale = return_scale)
+        prev_coef = trainF$coefficient
         
         #test
+        testX = x[which(test_index==i),]
+        
+        testY = y[which(test_index==i)]
+      
+        if (return_scale) testX = scale(testX)
+        
+        if (intercept) {testX = cbind(rep(1,length(testY)),testX)}
+        
         testF = family_fun(testY,testX,prev_coef)
+        
+        penalty = sum(abs(prev_coef))
+        
+        if (obj == "test_error"){
+          objective = classification(prev_coef,testX,testY)$err
+        } else {
+          if(obj == "deviance"){
+            objective = testF$obj
+          }
+        }
+        
         result = 
           result %>% 
           rbind(expand.grid(coefficient = trainF$coefficient,
                             lambda = lam,
-                            loglikelihood = testF$logli+ lam*sum(abs(trainF$coefficient))) %>% 
+                            objective = 
+                              objective
+                              ) %>% 
                   cbind(tibble(term = (1:length(trainF$coefficient))-1) %>% 
                           mutate_all(as.character))
           )
@@ -180,21 +236,28 @@ cv_Qlasso =
     # take the mean of everything
     result = result %>% 
       group_by(lambda,term) %>% 
-      summarise(across(c(coefficient,loglikelihood),mean))%>% 
-      arrange((loglikelihood)) %>% 
+      summarise(sd = sd(objective),
+                across(c(coefficient,objective),mean))%>% 
+      arrange((objective)) %>% 
+      relocate(objective,lambda) %>% 
       nest(coef = c(coefficient,term))
     
     coef = result[1,] %>% 
-      unnest() %>% 
+      unnest(c(coef)) %>% 
       pull(coefficient)
     
     lambda = result[1,"lambda"] %>% as.numeric()
     
-    loglikelihood = result[1,"loglikelihood"] %>% as.numeric()
+    objective = result[1,"objective"] %>% as.numeric()
+    
+    onese = min(result[,"objective"] %>% unlist())+result[1,"sd"] %>% as.numeric()
+
+    result =result %>% 
+      mutate(`1se` = objective <= onese)
     
     return(list(
       coefficient = coef,
-      loglikelihood = loglikelihood,
+      objective = objective,
       lambda = lambda,
       cvtable = result
     ))
