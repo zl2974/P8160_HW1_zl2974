@@ -99,7 +99,7 @@ stopCluster(cl)
 ```
 
 
-The 95% CI is
+
 ```{r}
 alpha = 0.05
 lower = max(diff_bt[percent_rank(diff_bt)<alpha/2])
@@ -107,7 +107,7 @@ upper = min(diff_bt[percent_rank(diff_bt)>(1-alpha/2)])
 lower_aj = 2*mean(red-blue) -upper
 upper_aj = 2*mean(red-blue) - lower
 ```
-`r c(lower_aj,upper_aj)`.Given the bootstrap interval, we see that 0 is within the CI, we cannot reject the Null hypothesis that the interventions have no difference
+The unadjusted CI is `r `c(lower,upper)`.The adjusted 95% CI is`r c(lower_aj,upper_aj)`.Given the bootstrap interval, we see that 0 is within the CI, we cannot reject the Null hypothesis that the interventions have no difference.
 
 
 ## Problem 2 (Continue from Homework 3, the breast cancer sutdy): 
@@ -152,11 +152,23 @@ Y = breast$diagnosis
 
 X = model.matrix(diagnosis~.,breast)[,-1]
 
+set.seed(123123)
+
+test_index = sample(1:length(Y),0.2*length(Y))
+
 corrplot::corrplot(cor(X))
 
 high_cor = caret::findCorrelation(cor(X),0.8)
 
 X = X[,-high_cor]
+
+Y_ts = Y[test_index]
+
+X_ts = X[test_index,]
+
+Y_tr=Y[-test_index]
+
+X_tr=X[-test_index,]
 ```
 
 Keeping only variables below correlation of 0.8.
@@ -167,7 +179,7 @@ Using predictive error rate as loss function, we tune the lasso logistic as:
 set.seed(123123)
 source("lasso_function.R")
 
-a = cv_Qlasso(Y,X,bfun,intercept = T,return_scale = T)
+a = cv_Qlasso(Y_tr,X_tr,bfun,intercept = T,return_scale = T)
 
 a
 
@@ -175,6 +187,89 @@ drop_var = a$coefficient==0
 
 names(breast)[-high_cor][-drop_var]
 
-model = glm(Y~X[,-drop_var],family = binomial())
+X_new = as_tibble(X_tr[,-drop_var])
+
+predict_model = glm(Y_tr~.,data=X_new,family = binomial())
 ```
+
+
+```{r prediction}
+X_ts_new = X_ts[,-drop_var]
+
+pd = ifelse(predict(predict_model,newdata = as_tibble(X_ts_new),type = "response")>=0.5,"B","M") %>% forcats::fct_relevel(.,"M") %>% as.numeric() -1
+
+Y_ts
+
+mean(Y_ts %>% as.numeric() -1 !=pd)
+
+plot(roc(Y_ts %>% as.numeric() -1,pd),legacy.axes = T)
+```
+
+
+
+```{r}
+test_data = 
+  cbind(Y_tr,X_new) %>% 
+  as_tibble() %>% 
+  rename(y=Y_tr)
+
+cl = makePSOCKcluster(5)
+registerDoParallel(cl)
+
+bt_err = foreach(i=1:B,
+                 .combine = rbind) %dopar% {
+                   bt_data= dplyr::sample_n(test_data,nrow(test_data),replace = T)
+                   bt_md = glm(y~.,data = bt_data,family = binomial)
+                   bt_pd = rep("M",len = length(Y_ts))
+                   bt_pd[predict(bt_md,dplyr::as_tibble(X_ts_new),type = "response")>0.5]="B"
+                   mean(Y_ts!=bt_pd)
+                 }
+
+stopCluster(cl)
+
+hist(bt_err)
+
+abline(v = mean(bt_err),add = T,col=2)
+```
+
+
+
+```{r smoothing,include=F,eval=F}
+source("golden_search.R")
+
+Y_ts = as.numeric(Y_ts)-1
+
+pd = as.numeric(pd) -1
+
+btsm =
+  function(data,width) {
+    den = density(data, bw = width)
+    
+    den.s = smooth.spline(den$x, den$y, all.knots = T, spar = 0.8)
+    
+    s.1 = predict(den.s, den.s$x, deriv = 1)
+    
+    nmode = length(rle(den.sign <- sign(s.1$y))$values) / 2
+    
+    return(list(nmode = nmode))
+  }
+
+
+find_h = 
+  function(data,left=1e-4,right=1e+4){
+    goose_egg(fun = 
+                function(x) -abs(btsm(data,x)$nmode),
+              left = left,
+              right = right)
+  }
+
+boot_H = 
+  foreach(i = 1:B,
+          .combine = rbind) %do%{
+            find_h(sample(Y_ts,length(Y_ts),replace = T))
+          }
+```
+
+
+
 
