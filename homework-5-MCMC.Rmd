@@ -1,12 +1,17 @@
 ---
 title: "Homework 5 on MCMC"
-author: "Leave your name and uni here"
+author: "ZHUOHUI LIANG zl2074"
 date: "Due: 04/18/2020, by 11:59pm"
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+
+
+
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = F)
 ```
 
 # Problem 1
@@ -14,10 +19,25 @@ Derive the posterior distributions in the following settings:
 
 1. Suppose $X_1,...,X_n$ iid sample from $N(\theta, \sigma^2)$ distribution, the prior distribution of $\theta$ is $N(\mu, \tau^2)$, derive the posterior distribtuion of $\theta$ given $\mathbf{X}$:
 
+\begin{eqnarray}
+Pr[\theta|X] = \frac{Pr[\theta]*Pr[X|\theta]}{Pr[X]}
+ &\propto& exp(-\frac{(\mu-\theta)^2}{\tau^2})*exp(-\frac{(\sum X-\theta)^2}{n\sigma^2})\\
+ &=& exp[\frac{-(n\sigma^2(\mu^2-2\mu\theta+\theta^2)+\tau^2(\sum X^2-2\sum X\theta+\theta^2))}{\tau^2n\sigma^2}]\\
+ &\propto& exp(-[\frac{\theta^2-2\theta(\frac{\mu}{\tau^2}+\frac{\sum X}{n\sigma^2})+(\frac{\mu}{\tau^2}+\frac{\sum X}{n\sigma^2})^2}{(\frac{1}{\tau^2}+\frac{n}{\sigma})^{-1}}])
+\end{eqnarray}
+
+As such, $\theta|X\sim N((\frac{\mu}{\tau^2}+\frac{\sum X}{n\sigma^2}),(\frac{1}{\tau^2}+\frac{n}{\sigma})^{-1})$
 
 
 2.Suppose $X_1,...,X_n$ iid sample from $U(0, \theta)$ distribution, the prior distribution of $\theta$ is Pareto distribution with pdf
 $$\pi(\theta) = \frac{\alpha \beta^\alpha}{\theta^{\alpha+1}}I\{\theta\ge \beta\}$$ with known $\beta$ and $\alpha$
+
+
+\begin{eqnarray}
+Pr[\theta|X] &\propto& L(X|\theta)*\pi(\theta)\\
+ &=& \theta^{-n}*\frac{\alpha\beta^\alpha}{\theta^{\alpha+1}}I(\theta\ge\beta)\\
+ &=& \frac{\alpha\beta^\alpha}{\theta^{n+\alpha+1}}I(\theta\ge\beta)
+\end{eqnarray}
 
 
 # Answer: your answer starts here...
