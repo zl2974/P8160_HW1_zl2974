@@ -185,7 +185,7 @@ a
 
 drop_var = a$coefficient==0
 
-names(breast)[-high_cor][-drop_var]
+names(breast)[-high_cor][-drop_var[-1]]
 
 X_new = as_tibble(X_tr[,-drop_var])
 
@@ -209,27 +209,39 @@ plot(roc(Y_ts %>% as.numeric() -1,pd),legacy.axes = T)
 
 ```{r}
 test_data = 
-  cbind(Y_tr,X_new) %>% 
+  cbind(Y_tr,X) %>% 
   as_tibble() %>% 
-  rename(y=Y_tr)
+  rename(y=Y_tr) %>% 
+  mutate(y = y-1)
 
 cl = makePSOCKcluster(5)
 registerDoParallel(cl)
 
 bt_err = foreach(i=1:B,
-                 .combine = rbind) %dopar% {
+                 .combine = cbind,
+                 .packages = "tidyverse",
+                 .errorhandling = "remove") %dopar% {
                    bt_data= dplyr::sample_n(test_data,nrow(test_data),replace = T)
-                   bt_md = glm(y~.,data = bt_data,family = binomial)
+                   bt_select = 
+                     cv_Qlasso(bt_data$y,bt_data[,-1],bfun,
+                               intercept = T,return_scale = T)
+                   drop_var = bt_select$coefficient==0
+                   bt_md = glm(test_data$y~.,
+                               data = bt_data[,-1][,-drop_var[-1]],
+                               family = binomial)
                    bt_pd = rep("M",len = length(Y_ts))
-                   bt_pd[predict(bt_md,dplyr::as_tibble(X_ts_new),type = "response")>0.5]="B"
-                   mean(Y_ts!=bt_pd)
+                   predict(bt_md,dplyr::as_tibble(X_ts),type = "response")
                  }
 
 stopCluster(cl)
 
-hist(bt_err)
+bagging_bt_err = rowSums(bt_err)/ncol(bt_err)
 
-abline(v = mean(bt_err),add = T,col=2)
+bt_err = rep("M",len = length(Y_ts))
+
+bt_err[bagging_bt_err>0.5] = "B"
+
+mean(bt_err != Y_ts)
 ```
 
 
