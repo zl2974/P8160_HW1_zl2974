@@ -6,12 +6,15 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
+library(parallel)
+library(foreach)
+library(doParallel)
 library(tidyverse)
 
 
 
 knitr::opts_chunk$set(echo = TRUE,
-                      eval = F)
+                      eval = T)
 ```
 
 # Problem 1
@@ -73,7 +76,43 @@ feature of the chain.
 # Answer: your answer starts here...
 
 ```{r }
-#R codes:
+K = matrix(c(.5, .5, .25, .25, 0, .25, .25, .5, .5), 3, 3, byrow = T)
+
+init = c(0.5, 0, .5)
+
+
+# function
+easychain = function(init, transit, step = Inf) {
+  
+  state = K %*% init
+  
+  prev_state = init
+  
+  i = 1
+  while (any(abs(prev_state - state) > 1e-6 & i < step)) {
+    i  = i + 1
+    prev_state = state
+    state = K %*% state
+  }
+  return(state)
+}
+```
+
+```{r }
+# first step
+easychain(init,K,1)
+
+```
+
+```{r }
+# converge value/ stationary
+easychain(init,K) 
+
+# proved of stationary
+easychain(c(.1,.3,.6),K)
+
+easychain(diag(3),K)
+
 ```
 
 
@@ -91,7 +130,215 @@ Complete the following tasks:
 
 # Answer: your answer starts here...
 
+## 1
+
+\begin{eqnarray}
+f(x|y) &=& \frac{f(x,y)}{f(y)}\\
+ &=& f(x,y)/\sum_xf(x,y)\\
+ &=& f(x,y)/y^{a-1}(1-y)^{b-1}\sum {n \choose x} y^x(1-y)^{n-x}\\
+ &=& \frac{{n \choose x} y^{x + a - 1}(1- y)^{n-x+b-1}}{y^{a-1}(1-y)^{b-1}}\\
+ &=& Bin(n,y)
+\end{eqnarray}
+
+
+\begin{eqnarray}
+f(y|x) &=& \frac{f(x,y)}{f(x)}\\
+ &=& f(x,y)/{n \choose x}\int_yy^{x+a-1}(1-y)^{n-x+b-1}\\
+ &=& f(x,y)/{n \choose x}B(x+a,n-x+b)\\
+ &=& \frac{{n \choose x} y^{x + a - 1}(1- y)^{n-x+b-1}}{{n \choose x}B(x+a,n-x+b)}\\
+ &=& Beta(x+a,n-x+b)
+\end{eqnarray}
+
 ```{r }
-#R codes:
+gibbs =
+  function(n,
+           a,
+           b,
+           step = 1e+4,
+           burn = F,
+           x_init = NA,
+           y_init = NA,
+           .tol = 1e-6) {
+    if (is.na(x_init))
+      x_init = runif(1,1,10)%/%1
+    
+    if (is.na(y_init))
+      y_init = runif(1)
+    
+    x = c(x_init)
+    y = c(y_init)
+    burnin = c(T)
+    iter = 1
+    
+    while (iter < step) {
+      x = c(x, rbinom(1, n, y[iter]))
+      y = c(y, rbeta(1, x[iter] + a, n - x[iter] + b))
+      iter = iter + 1
+      burnin = c(burnin, all(c(abs(x[iter] - x[iter - 1]) > .tol, abs(y[iter] -
+                                                                        y[iter - 1]) > .tol)))
+    }
+    
+    
+    index = 1:step
+    
+    if (burn) {
+      index = index[-burnin]
+      x = x[-burnin]
+      y = y[-burnin]
+    }
+    
+    return(list(x = x,
+                y = y,
+                index = index))
+  }
+
+
+set.seed(123123)
+test_gibbs = gibbs(30,a = 9,b=14)
+
+ggplot(as_tibble(test_gibbs))+geom_path(aes(index,x))
+
+hist(test_gibbs$x)
+
+ggplot(as_tibble(test_gibbs))+geom_path(aes(index,y))
+
+hist(test_gibbs$y)
+```
+
+
+## 2
+
+We propose random walk,
+
+$$Y|X \sim U(X-s,x+s)$$
+
+such that our propose q function is :
+$$q(y|x) = \frac{1}{2a}I(x-s,x+s) = q(x|y)$$
+
+s.t over accept probabilty is:
+
+$$\alpha_i(x_i^k,X_{-i}^{k},y_i) = min\{\frac{{n \choose y_1} y_2^{y_1 + a - 1}(1- y_2)^{n-y_1+b-1} }{{n \choose x_1} x_2^{x_1 + a - 1}(1- x_2)^{n-x_1+b-1} };1\})$$
+
+
+```{r}
+logP = function(theta,n,a,b){
+  x = theta[[1]]
+  y = theta[[2]]
+  
+  res = choose(n, x) *
+          y ^ (x + a - 1) *
+          (1 - y) ^ (n - x + b - 1)
+  
+  return(log(res))}
+
+x_update = 
+  function(x,y,n,a,b,...){
+    new_x = 
+      rpois(1,n*y)
+  }
+
+y_update = 
+  function(x,y,n,a,b,...){
+    # make sure that y is in 0,1
+    new_y = 
+      rbeta(1,x+a,n-x+b)
+    return(new_y)
+  }
+
+M_update =
+  function(theta,update_function_list, n, a, b) {
+    for (i in 1:length(theta)) {
+      # take old parameter
+      new = theta
+      
+      #update x/y given old
+      new[[i]] = update_function_list[[i]](theta[[1]],theta[[2]],n,a,b)
+      
+      #calculated the acceptance rate
+      accept = logP(new, n, a, b) - logP(theta, n, a, b)
+      
+      if(is.na(accept)) next
+      
+      if (log(runif(1)) < accept)
+        theta = new
+    }
+    
+    return(theta)
+  }
+
+MET =
+  function(n,
+           a,
+           b,
+           step = 1e+4,
+           .tol = 1e-6,
+           x_init = 1,
+           y_init = .5,
+           ...) {
+    iter = 1
+    
+    x = y = xaccept = yaccept = rep(NA, step)
+    
+    x[[1]] = x_init
+    
+    y[[1]] = y_init
+    
+    
+    while (iter < step) {
+      new_theta = M_update(c(x[[iter]], y[[iter]]),
+                           list(x_update, y_update),
+                           n, a, b)
+      iter = iter + 1
+      x[[iter]] = new_theta[[1]]
+      xaccept[[iter]] = x[[iter - 1]] != x[[iter]]
+      y[[iter]] = new_theta[[2]]
+      yaccept[[iter]] = y[[iter - 1]] != y[[iter]]
+    }
+    
+    return(list(x = x,
+                y = y,
+                accept = 
+                  list(x = xaccept,
+                       y = yaccept)))
+  }
+
+re = MET(30,4,13,step = 10000)
+
+ggplot(tibble(index = 1:10000, x = re$x),aes(x =index, y = x))+
+  geom_path()
+
+ggplot(tibble(index = 1:10000, y = re$y),aes(x =index, y = y))+
+  geom_path()
+```
+
+```{r}
+# n=30,a = 9, b = 14
+
+#starting value x: 1 to 30
+#y 0 to 1
+
+set.seed(123123)
+
+cond = expand.grid(x = seq(1,30,len = 10)%/%1,
+            y = seq(0,1,len = 5))
+
+cl = makePSOCKcluster(5)
+registerDoParallel(cl)
+
+G = foreach(i = 1:nrow(cond),
+        .combine = rbind) %doPar% {
+          x = cond[i,1]
+          y = cond[i,2]
+          gibbs(30,9,14,step = 1000,x_init = x,y_init = y)
+        }
+
+M = foreach(i = 1:nrow(cond),
+        .combine = rbind) %doPar% {
+          x = cond[i,1]
+          y = cond[i,2]
+          MET(30,9,14,step=1000,x_init = x,y_init = y)
+        }
+
+stopCluster(cl)
 ```
 
