@@ -200,6 +200,10 @@ hist(test_gibbs$x)
 ggplot(as_tibble(test_gibbs))+geom_path(aes(index,y))
 
 hist(test_gibbs$y)
+
+acf(test_gibbs$x)
+
+acf(test_gibbs$y)
 ```
 
 
@@ -331,6 +335,10 @@ ggplot(tibble(index = 1:1000, x = re$x),aes(x =index, y = x))+
 ggplot(tibble(index = 1:1000, y = re$y),aes(x =index, y = y))+
   geom_path()+
   labs(title = str_c("acceptance is ",sum(re$accept$y,na.rm = T)/1000))
+
+acf(re$x)
+
+acf(re$y)
 ```
 
 ```{r}
