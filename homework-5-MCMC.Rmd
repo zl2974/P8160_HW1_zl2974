@@ -14,7 +14,7 @@ library(tidyverse)
 
 
 knitr::opts_chunk$set(echo = TRUE,
-                      eval = T)
+                      cache = T)
 ```
 
 # Problem 1
@@ -24,12 +24,12 @@ Derive the posterior distributions in the following settings:
 
 \begin{eqnarray}
 Pr[\theta|X] = \frac{Pr[\theta]*Pr[X|\theta]}{Pr[X]}
- &\propto& exp(-\frac{(\mu-\theta)^2}{\tau^2})*exp(-\frac{(\sum X-\theta)^2}{n\sigma^2})\\
- &=& exp[\frac{-(n\sigma^2(\mu^2-2\mu\theta+\theta^2)+\tau^2(\sum X^2-2\sum X\theta+\theta^2))}{\tau^2n\sigma^2}]\\
- &\propto& exp(-[\frac{\theta^2-2\theta(\frac{\mu}{\tau^2}+\frac{\sum X}{n\sigma^2})+(\frac{\mu}{\tau^2}+\frac{\sum X}{n\sigma^2})^2}{(\frac{1}{\tau^2}+\frac{n}{\sigma})^{-1}}])
+ &\propto& exp(-\frac{(\mu-\theta)^2}{\tau^2})*exp(-\frac{(\sum X-\theta)^2}{\sigma^2})\\
+ &=& exp[\frac{-(\sigma^2(\mu^2-2\mu\theta+\theta^2)+\tau^2(\sum X^2-2\sum X\theta+\theta^2))}{\tau^2\sigma^2}]\\
+ &\propto& exp(-[\frac{\theta^2-2\theta(\frac{\mu}{\tau^2}+\frac{\sum X}{\sigma^2})+(\frac{\mu}{\tau^2}+\frac{\sum X}{\sigma^2})^2}{(\frac{1}{\tau^2}+\frac{n}{\sigma})^{-1}}])
 \end{eqnarray}
 
-As such, $\theta|X\sim N((\frac{\mu}{\tau^2}+\frac{\sum X}{n\sigma^2}),(\frac{1}{\tau^2}+\frac{n}{\sigma})^{-1})$
+As such, $\theta|X\sim N((\frac{\mu}{\tau^2}+\frac{\sum X}{\sigma^2}),(\frac{1}{\tau^2}+\frac{n}{\sigma})^{-1})$
 
 
 2.Suppose $X_1,...,X_n$ iid sample from $U(0, \theta)$ distribution, the prior distribution of $\theta$ is Pareto distribution with pdf
@@ -207,28 +207,37 @@ hist(test_gibbs$y)
 
 We propose two different proposal distribution for x and y,
 
-$$Y|X \sim Beta(X+a,n-X+b)$$
+$$
+Y_i|X_{i-1},Y_{i-2} \sim Beta(X_{i-1}+a,n-X_{i-1}+b)
+$$
 
 and 
 
-$$X|Y \sim Poisson(n*Y)$$
+$$
+X_i|X_{i-1},Y_{i-2} \sim Poisson(n*Y_{i-1})
+$$
 
 s.t over accept probabilty is:
 
-$$\alpha_i(x_i^k,X_{-i}^{k},y_i) = min\{\frac{\pi(poison(y_1;n*y_2))*\pi(beta(y_2;y_1+a,n-y_1+b)){n \choose y_1} y_2^{y_1 + a - 1}(1- y_2)^{n-y_1+b-1} }{\pi(poison(x_1;n*x_2))*\pi(beta(x_2;x_1+a,n-x_1+b)){n \choose x_1} x_2^{x_1 + a - 1}(1- x_2)^{n-x_1+b-1} };1\})$$
+$$
+\alpha_i(x_i^k,X_{-i}^{k},y_i) = min\{\frac{q(y_i|x_{1,k},x_{2,k-1}){n \choose y_1} y_2^{y_1 + a - 1}(1- y_2)^{n-y_1+b-1} }{q(x_i|y_{1,k},y_{2,k-1}){n \choose x_1} x_2^{x_1 + a - 1}(1- x_2)^{n-x_1+b-1} };1\})
+$$
+
 
 
 ```{r}
-logP = function(theta,n,a,b){
+logP = function(theta,n,a,b,i,..){
   x = theta[[1]]
   y = theta[[2]]
   
   res = choose(n, x) *
           y ^ (x + a - 1) *
           (1 - y) ^ (n - x + b - 1)
-  res = dpois(x,n*y)*res
+  if (i == 1)
+    res = dpois(x, n * y) * res
   
-  res = dbeta(y,x+a,n-x+b) * res
+  if (i == 2)
+    res = dbeta(y, x + a, n - x + b) * res
   
   return(log(res))}
 
@@ -256,7 +265,7 @@ M_update =
       new[[i]] = update_function_list[[i]](theta[[1]],theta[[2]],n,a,b)
       
       #calculated the acceptance rate
-      accept = logP(new, n, a, b) - logP(theta, n, a, b)
+      accept = logP(new, n, a, b,i) - logP(theta, n, a, b,i)
       
       if(is.na(accept)) next
       
@@ -313,7 +322,7 @@ return(list(x = x,
             accept = accept))
   }
 
-re = MET(30,4,13,step = 1000)
+re = MET(30,9,14,step = 1000)
 
 ggplot(tibble(index = 1:1000, x = re$x),aes(x =index, y = x))+
   geom_path()+
@@ -396,4 +405,6 @@ names(sim_data) = c("x_init","y_init","gibbs_x","gibbs_y","met_x","met_y")
 knitr::kable(sim_data,
              caption = "Simulation result based on 100 run on differet start values with 100 burn")
 ```
+
+  A 100 run simulation is conducted,each senario start from a different starting value of x and y, which include extreme and moderated cases. In the simulation, we can see that regardless of starting values, both methods reach similar conclusion about the posterior value of x and y.
 
